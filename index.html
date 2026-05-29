@@ -239,6 +239,57 @@ input[type="text"]::placeholder, textarea::placeholder {
 .send-status.ok { color: #7ab87a; }
 .send-status.err { color: #c87a7a; }
 
+/* ===== DRAFT MODAL ===== */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--black2);
+  border: 1px solid var(--border);
+  width: 90%;
+  max-width: 420px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 28px;
+}
+.modal-title {
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.draft-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.draft-item:hover { color: var(--gold); }
+.draft-item-name { font-size: 15px; margin-bottom: 4px; }
+.draft-item-date { font-size: 11px; color: var(--mid); letter-spacing: 0.05em; }
+.modal-close {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--mid);
+  cursor: pointer;
+  margin-top: 20px;
+  width: 100%;
+}
+.draft-empty { font-size: 14px; color: var(--mid); font-style: italic; }
+
 /* ===== MOBILE ===== */
 @media (max-width: 480px) {
   .top-bar { padding: 18px 20px; }
@@ -258,6 +309,8 @@ input[type="text"]::placeholder, textarea::placeholder {
     <div class="top-mode">
       <button class="mode-btn active" id="btn-edit" onclick="setMode('edit')">編集</button>
       <button class="mode-btn" id="btn-preview" onclick="setMode('preview')">プレビュー</button>
+      <button class="mode-btn" onclick="saveDraftToDrive()" title="Google Driveに下書き保存">保存</button>
+      <button class="mode-btn" onclick="showDraftList()" title="下書き一覧">下書き</button>
     </div>
   </div>
 
@@ -315,10 +368,20 @@ input[type="text"]::placeholder, textarea::placeholder {
 
 </div>
 
+<!-- DRAFT MODAL -->
+<div class="modal-overlay" id="draft-modal">
+  <div class="modal">
+    <p class="modal-title">下書き一覧</p>
+    <div id="draft-list"></div>
+    <button class="modal-close" onclick="closeDraftModal()">閉じる</button>
+  </div>
+</div>
+
 <!-- SEND BAR -->
 <div class="send-bar">
   <button class="send-btn" id="send-btn" onclick="sendMail()">今すぐ配信</button>
   <button class="send-btn" id="schedule-btn" onclick="scheduleMail()" style="background:transparent;border:1px solid var(--gold);color:var(--gold);">予約配信</button>
+  <button class="send-btn" id="cancel-btn" onclick="cancelSchedule()" style="background:transparent;border:1px solid #c87a7a;color:#c87a7a;">予約取消</button>
   <span class="send-status" id="send-status">配信日時を設定して予約するか、今すぐ配信できます</span>
 </div>
 
@@ -449,6 +512,123 @@ async function sendMail() {
     setStatus('通信エラーが発生しました。GASのURLを確認してください。', 'err');
   }
   btn.disabled = false;
+}
+
+// ===== CANCEL SCHEDULE =====
+async function cancelSchedule() {
+  const confirmed = confirm('予約配信をキャンセルします。Googleカレンダーの予定も削除されます。よろしいですか？');
+  if (!confirmed) return;
+
+  const btn = document.getElementById('cancel-btn');
+  btn.disabled = true;
+  setStatus('キャンセル中...', '');
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'cancelSchedule' })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('schedule-dt').value = '';
+      setStatus('✓ 予約をキャンセルしました。カレンダーの予定も削除されました。', 'ok');
+    } else {
+      setStatus('エラー: キャンセルに失敗しました', 'err');
+    }
+  } catch(e) {
+    setStatus('通信エラーが発生しました', 'err');
+  }
+  btn.disabled = false;
+}
+
+// ===== DRAFT: SAVE =====
+async function saveDraftToDrive() {
+  const data = {
+    issue:    document.getElementById('issue').value,
+    subject:  document.getElementById('subject').value,
+    date:     document.getElementById('date').value,
+    signoff:  document.getElementById('signoff').value,
+    body:     document.getElementById('body-editor').value,
+    schedule: document.getElementById('schedule-dt').value,
+  };
+
+  const btn = document.querySelector('.mode-btn[onclick="saveDraftToDrive()"]');
+  btn.textContent = '保存中...';
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'saveDraft', data })
+    });
+    const result = await res.json();
+    if (result.ok) {
+      btn.textContent = '✓ 保存';
+      setTimeout(() => btn.textContent = '保存', 2000);
+    } else {
+      btn.textContent = '保存';
+      alert('保存に失敗しました');
+    }
+  } catch(e) {
+    btn.textContent = '保存';
+    alert('通信エラーが発生しました');
+  }
+}
+
+// ===== DRAFT: LIST =====
+async function showDraftList() {
+  document.getElementById('draft-modal').classList.add('open');
+  const listEl = document.getElementById('draft-list');
+  listEl.innerHTML = '<p class="draft-empty">読み込み中...</p>';
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'listDrafts' })
+    });
+    const result = await res.json();
+    if (result.ok && result.drafts.length > 0) {
+      listEl.innerHTML = result.drafts.map(d => {
+        const issue = d.name.replace('draft_', '').replace('.json', '');
+        const date  = new Date(d.updated).toLocaleString('ja-JP');
+        return `<div class="draft-item" onclick="loadDraftFromDrive('${issue}')">
+          <div class="draft-item-name">${issue}</div>
+          <div class="draft-item-date">${date}</div>
+        </div>`;
+      }).join('');
+    } else {
+      listEl.innerHTML = '<p class="draft-empty">下書きはまだありません</p>';
+    }
+  } catch(e) {
+    listEl.innerHTML = '<p class="draft-empty">読み込みに失敗しました</p>';
+  }
+}
+
+// ===== DRAFT: LOAD =====
+async function loadDraftFromDrive(issue) {
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'loadDraft', issue })
+    });
+    const result = await res.json();
+    if (result.ok) {
+      const d = result.data;
+      document.getElementById('issue').value       = d.issue    || '';
+      document.getElementById('subject').value     = d.subject  || '';
+      document.getElementById('date').value        = d.date     || '';
+      document.getElementById('signoff').value     = d.signoff  || '';
+      document.getElementById('body-editor').value = d.body     || '';
+      document.getElementById('schedule-dt').value = d.schedule || '';
+      closeDraftModal();
+      setStatus('✓ 下書きを読み込みました', 'ok');
+    }
+  } catch(e) {
+    alert('読み込みに失敗しました');
+  }
+}
+
+function closeDraftModal() {
+  document.getElementById('draft-modal').classList.remove('open');
 }
 
 function setStatus(msg, cls) {
