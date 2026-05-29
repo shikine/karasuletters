@@ -551,13 +551,10 @@ async function sendMail() {
 
   try {
     const res = await fetch(GAS_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        subject: subject,
-        html: htmlContent
-      })
-    });
-
+  method: 'POST',
+  headers: { 'Content-Type': 'text/plain' },
+  body: JSON.stringify({ action: 'saveDraft', data })
+});
     const data = await res.json();
     if (data.ok) {
       setStatus(`✓ ${data.sent} 件のメールを送信しました！`, 'ok');
