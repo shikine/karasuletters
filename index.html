@@ -52,68 +52,52 @@ body::before {
   padding: 24px 28px 20px;
   border-bottom: 1px solid var(--border);
 }
-.top-logo {
-  font-size: 11px;
-  letter-spacing: 0.3em;
-  color: var(--gold);
-  text-transform: uppercase;
-}
+.top-logo { font-size: 11px; letter-spacing: 0.3em; color: var(--gold); text-transform: uppercase; }
 .top-mode { display: flex; gap: 4px; }
 .mode-btn {
   font-family: 'EB Garamond', Georgia, serif;
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  padding: 6px 14px;
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--mid);
-  cursor: pointer;
-  transition: all 0.2s;
+  font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+  padding: 6px 14px; background: transparent; border: 1px solid var(--border);
+  color: var(--mid); cursor: pointer; transition: all 0.2s;
 }
 .mode-btn.active { background: var(--cream); color: var(--black); border-color: var(--cream); }
 
-/* ===== SCHEDULE BANNER ===== */
-.schedule-banner {
-  display: none;
+/* ===== SCHEDULE LIST ===== */
+.schedule-list-wrap {
   margin: 20px 28px 0;
-  padding: 14px 18px;
-  border: 1px solid var(--gold);
-  background: rgba(200,184,154,0.07);
-  font-size: 13px;
-  color: var(--gold);
-  font-style: italic;
-  letter-spacing: 0.03em;
+  display: none;
 }
-.schedule-banner.visible { display: block; }
-.schedule-banner strong { font-style: normal; font-weight: 500; }
-
-.fields {
-  padding: 28px 28px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.schedule-list-wrap.visible { display: block; }
+.schedule-list-title {
+  font-size: 10px; letter-spacing: 0.25em; color: var(--gold);
+  text-transform: uppercase; margin-bottom: 10px;
 }
-.field-label {
-  font-size: 10px;
-  letter-spacing: 0.25em;
-  color: var(--gold);
-  text-transform: uppercase;
-  display: block;
-  margin-bottom: 8px;
-}
-input[type="text"], input[type="datetime-local"], textarea {
-  width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--cream);
-  font-family: 'EB Garamond', Georgia, serif;
-  font-size: 16px;
+.schedule-item {
+  display: flex; align-items: center; gap: 12px;
   padding: 12px 16px;
-  outline: none;
-  transition: border-color 0.2s;
-  resize: none;
-  -webkit-appearance: none;
+  background: var(--surface); border: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+.schedule-item-info { flex: 1; min-width: 0; }
+.schedule-item-subject { font-size: 15px; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.schedule-item-date { font-size: 11px; color: var(--mid); letter-spacing: 0.05em; font-style: italic; }
+.schedule-cancel-btn {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+  padding: 6px 12px; background: transparent;
+  border: 1px solid #c87a7a; color: #c87a7a;
+  cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+}
+.schedule-cancel-btn:hover { background: #c87a7a; color: var(--black); }
+.schedule-empty { font-size: 13px; color: var(--mid); font-style: italic; padding: 8px 0; }
+
+.fields { padding: 28px 28px 0; display: flex; flex-direction: column; gap: 20px; }
+.field-label { font-size: 10px; letter-spacing: 0.25em; color: var(--gold); text-transform: uppercase; display: block; margin-bottom: 8px; }
+input[type="text"], input[type="datetime-local"], textarea {
+  width: 100%; background: var(--surface); border: 1px solid var(--border);
+  color: var(--cream); font-family: 'EB Garamond', Georgia, serif;
+  font-size: 16px; padding: 12px 16px; outline: none;
+  transition: border-color 0.2s; resize: none; -webkit-appearance: none;
 }
 input[type="text"]:focus, input[type="datetime-local"]:focus, textarea:focus { border-color: var(--gold); }
 input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
@@ -122,85 +106,43 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
 .claude-prompt-wrap { display: flex; gap: 8px; }
 .claude-prompt-wrap textarea { flex: 1; height: 80px; }
 .claude-btn {
-  font-family: 'EB Garamond', Georgia, serif;
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  padding: 0 18px;
-  background: var(--surface);
-  border: 1px solid var(--gold);
-  color: var(--gold);
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  align-self: stretch;
+  font-family: 'EB Garamond', Georgia, serif; font-size: 11px;
+  letter-spacing: 0.2em; text-transform: uppercase; padding: 0 18px;
+  background: var(--surface); border: 1px solid var(--gold); color: var(--gold);
+  cursor: pointer; transition: all 0.2s; white-space: nowrap; align-self: stretch;
 }
 .claude-btn:hover { background: var(--gold); color: var(--black); }
 .claude-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.claude-status {
-  font-size: 11px;
-  color: var(--mid);
-  letter-spacing: 0.1em;
-  margin-top: 10px;
-  min-height: 18px;
-  font-style: italic;
-}
+.claude-status { font-size: 11px; color: var(--mid); letter-spacing: 0.1em; margin-top: 10px; min-height: 18px; font-style: italic; }
 
 .divider { margin: 28px 28px 0; border: none; border-top: 1px solid var(--border); }
 
 .body-wrap { padding: 24px 28px 0; }
 #body-editor {
-  width: 100%;
-  min-height: 320px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--cream);
-  font-family: 'EB Garamond', Georgia, serif;
-  font-size: 17px;
-  line-height: 1.9;
-  padding: 20px;
-  outline: none;
-  transition: border-color 0.2s;
-  resize: vertical;
+  width: 100%; min-height: 320px; background: var(--surface);
+  border: 1px solid var(--border); color: var(--cream);
+  font-family: 'EB Garamond', Georgia, serif; font-size: 17px;
+  line-height: 1.9; padding: 20px; outline: none;
+  transition: border-color 0.2s; resize: vertical;
 }
 #body-editor:focus { border-color: var(--gold); }
 #body-editor::placeholder { color: #444440; }
 
 #preview-wrap { padding: 24px 28px 0; display: none; }
-.preview-frame {
-  border: 1px solid var(--border);
-  background: #f0ede6;
-  width: 100%;
-  min-height: 400px;
-  overflow: hidden;
-}
+.preview-frame { border: 1px solid var(--border); background: #f0ede6; width: 100%; min-height: 400px; overflow: hidden; }
 #preview-inner { width: 100%; padding: 0; }
 
 .send-bar {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  z-index: 10;
-  background: var(--black2);
-  border-top: 1px solid var(--border);
-  padding: 16px 28px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  max-width: 680px;
-  margin: 0 auto;
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+  background: var(--black2); border-top: 1px solid var(--border);
+  padding: 16px 28px; display: flex; align-items: center; gap: 12px;
+  max-width: 680px; margin: 0 auto;
 }
 .send-btn {
-  font-family: 'EB Garamond', Georgia, serif;
-  font-size: 12px;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  padding: 14px 28px;
-  background: var(--cream);
-  color: var(--black);
-  border: none;
-  cursor: pointer;
-  transition: background 0.2s;
-  flex-shrink: 0;
+  font-family: 'EB Garamond', Georgia, serif; font-size: 12px;
+  letter-spacing: 0.25em; text-transform: uppercase; padding: 14px 28px;
+  background: var(--cream); color: var(--black); border: none;
+  cursor: pointer; transition: background 0.2s; flex-shrink: 0;
 }
 .send-btn:hover { background: var(--gold); }
 .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -209,52 +151,25 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
 .send-status.err { color: #c87a7a; }
 
 .modal-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.7);
-  z-index: 100;
-  align-items: center;
-  justify-content: center;
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7); z-index: 100;
+  align-items: center; justify-content: center;
 }
 .modal-overlay.open { display: flex; }
 .modal {
-  background: var(--black2);
-  border: 1px solid var(--border);
-  width: 90%;
-  max-width: 420px;
-  max-height: 70vh;
-  overflow-y: auto;
-  padding: 28px;
+  background: var(--black2); border: 1px solid var(--border);
+  width: 90%; max-width: 420px; max-height: 70vh; overflow-y: auto; padding: 28px;
 }
-.modal-title {
-  font-size: 11px;
-  letter-spacing: 0.25em;
-  color: var(--gold);
-  text-transform: uppercase;
-  margin-bottom: 20px;
-}
-.draft-item {
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  transition: color 0.2s;
-}
+.modal-title { font-size: 11px; letter-spacing: 0.25em; color: var(--gold); text-transform: uppercase; margin-bottom: 20px; }
+.draft-item { padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: color 0.2s; }
 .draft-item:hover { color: var(--gold); }
 .draft-item-name { font-size: 15px; margin-bottom: 4px; }
 .draft-item-date { font-size: 11px; color: var(--mid); letter-spacing: 0.05em; }
 .modal-close {
-  font-family: 'EB Garamond', Georgia, serif;
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  padding: 10px 20px;
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--mid);
-  cursor: pointer;
-  margin-top: 20px;
-  width: 100%;
+  font-family: 'EB Garamond', Georgia, serif; font-size: 11px;
+  letter-spacing: 0.2em; text-transform: uppercase; padding: 10px 20px;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--mid); cursor: pointer; margin-top: 20px; width: 100%;
 }
 .draft-empty { font-size: 14px; color: var(--mid); font-style: italic; }
 
@@ -264,7 +179,7 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
   .top-logo { font-size: 10px; letter-spacing: 0.2em; }
   .top-mode { gap: 3px; flex-wrap: wrap; }
   .mode-btn { font-size: 9px; padding: 5px 10px; letter-spacing: 0.12em; }
-  .schedule-banner { margin: 16px 16px 0; font-size: 12px; }
+  .schedule-list-wrap { margin: 16px 16px 0; }
   .fields { padding: 20px 16px 0; gap: 16px; }
   .claude-panel { padding: 20px 16px 0; }
   .body-wrap { padding: 18px 16px 0; }
@@ -295,9 +210,10 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
     </div>
   </div>
 
-  <!-- 予約状況バナー -->
-  <div class="schedule-banner" id="schedule-banner">
-    <strong>予約中：</strong><span id="schedule-banner-text"></span>
+  <!-- 予約一覧 -->
+  <div class="schedule-list-wrap" id="schedule-list-wrap">
+    <p class="schedule-list-title">配信予約一覧</p>
+    <div id="schedule-list"></div>
   </div>
 
   <div class="fields">
@@ -363,7 +279,6 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
 <div class="send-bar">
   <button class="send-btn" id="send-btn" onclick="sendMail()">今すぐ配信</button>
   <button class="send-btn" id="schedule-btn" onclick="scheduleMail()" style="background:transparent;border:1px solid var(--gold);color:var(--gold);">予約配信</button>
-  <button class="send-btn" id="cancel-btn" onclick="cancelSchedule()" style="background:transparent;border:1px solid #c87a7a;color:#c87a7a;">予約取消</button>
   <span class="send-status" id="send-status">配信日時を設定して予約するか、今すぐ配信できます</span>
 </div>
 
@@ -371,34 +286,67 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
 const GAS_URL     = 'https://script.google.com/macros/s/AKfycbyieDzOkdfRhkqzWx51YnUC6Y-537NnTCfpDkCaXGNOLMYJTDzG36kBhgcllVQu1VV5tQ/exec';
 const GAS_HEADERS = { 'Content-Type': 'text/plain' };
 
-// ===== 起動時に予約状況を取得 =====
+// ===== 予約一覧の描画 =====
 async function loadScheduleStatus() {
   try {
-    const res    = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: GAS_HEADERS,
-      body: JSON.stringify({ action: 'getScheduleStatus' })
-    });
+    const res    = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ action: 'getScheduleStatus' }) });
     const result = await res.json();
-    if (result.ok && result.scheduled) {
-      showScheduleBanner(result.scheduled.subject, result.scheduled.scheduledAt);
-    }
+    renderScheduleList(result.schedules || []);
   } catch(e) {}
 }
 
-function showScheduleBanner(subject, scheduledAt) {
-  const banner  = document.getElementById('schedule-banner');
-  const text    = document.getElementById('schedule-banner-text');
-  const dateStr = new Date(scheduledAt).toLocaleString('ja-JP', {
-    year: 'numeric', month: 'long', day: 'numeric',
-    hour: '2-digit', minute: '2-digit'
-  });
-  text.textContent = `「${subject}」— ${dateStr} に配信予定`;
-  banner.classList.add('visible');
+function renderScheduleList(schedules) {
+  const wrap   = document.getElementById('schedule-list-wrap');
+  const listEl = document.getElementById('schedule-list');
+
+  if (!schedules || schedules.length === 0) {
+    wrap.classList.remove('visible');
+    return;
+  }
+
+  wrap.classList.add('visible');
+  listEl.innerHTML = schedules.map(s => {
+    const dateStr = new Date(s.scheduledAt).toLocaleString('ja-JP', {
+      year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+    return `<div class="schedule-item" id="sched-${s.id}">
+      <div class="schedule-item-info">
+        <div class="schedule-item-subject">${escHtml(s.subject)}</div>
+        <div class="schedule-item-date">${dateStr}</div>
+      </div>
+      <button class="schedule-cancel-btn" onclick="cancelScheduleById('${s.id}', this)">取消</button>
+    </div>`;
+  }).join('');
 }
 
-function hideScheduleBanner() {
-  document.getElementById('schedule-banner').classList.remove('visible');
+async function cancelScheduleById(id, btn) {
+  if (!confirm('この予約をキャンセルしますか？')) return;
+  btn.disabled = true;
+  btn.textContent = '取消中...';
+  try {
+    const res    = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ action: 'cancelSchedule', id }) });
+    const result = await res.json();
+    if (result.ok) {
+      document.getElementById('sched-' + id)?.remove();
+      // 残りアイテムがなければセクションを隠す
+      if (!document.querySelector('.schedule-item')) {
+        document.getElementById('schedule-list-wrap').classList.remove('visible');
+      }
+      setStatus('✓ 予約をキャンセルしました。', 'ok');
+    } else {
+      btn.disabled = false;
+      btn.textContent = '取消';
+      setStatus('エラー: キャンセルに失敗しました', 'err');
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '取消';
+    setStatus('通信エラーが発生しました', 'err');
+  }
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ===== MODE =====
@@ -423,11 +371,9 @@ function buildHTML() {
   const date    = document.getElementById('date').value    || '';
   const signoff = document.getElementById('signoff').value || '';
   const body    = document.getElementById('body-editor').value || '';
-
   const bodyHTML = body.split(/\n\n+/).map(p =>
     p.trim() ? `<p style="font-size:16px;line-height:1.9;color:#2a2a2a;margin:0 0 24px;font-family:Georgia,serif;">${p.replace(/\n/g,'<br>')}</p>` : ''
   ).join('');
-
   return `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f0ede6;padding:40px 0;">
 <tr><td align="center">
@@ -457,7 +403,7 @@ function buildHTML() {
 </table>`;
 }
 
-// ===== CLAUDE GENERATE =====
+// ===== CLAUDE =====
 async function generateWithClaude() {
   const prompt = document.getElementById('claude-prompt').value.trim();
   if (!prompt) return;
@@ -466,12 +412,11 @@ async function generateWithClaude() {
   btn.disabled = true;
   status.textContent = '生成中...';
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res  = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
+        model: 'claude-sonnet-4-20250514', max_tokens: 1000,
         system: 'あなたはメールマガジン「karasuletters」の編集アシスタントです。舞台美術家・建築家・美術作家として活動する渡辺志鬼根さんのメルマガの本文を書きます。文体は一人称・エッセイ調・ていねい語。改行は段落ごとに空行を入れてください。HTMLタグは使わないこと。',
         messages: [{ role: 'user', content: prompt }]
       })
@@ -492,21 +437,15 @@ async function sendMail() {
   if (!subject) { setStatus('件名を入力してください', 'err'); return; }
   if (!body)    { setStatus('本文を入力してください', 'err'); return; }
   if (!confirm(`件名：${subject}\n\nGoogle Sheets の全読者にメールを送信します。よろしいですか？`)) return;
-
   const btn = document.getElementById('send-btn');
   btn.disabled = true;
-  setStatus('送信中... しばらくお待ちください', '');
+  setStatus('送信中...', '');
   try {
     const res  = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ subject, html: buildHTML() }) });
     const data = await res.json();
-    if (data.ok) {
-      setStatus(`✓ ${data.sent} 件のメールを送信しました！`, 'ok');
-    } else {
-      setStatus(`エラー: ${data.error || '送信に失敗しました'}`, 'err');
-    }
-  } catch(e) {
-    setStatus('通信エラーが発生しました。', 'err');
-  }
+    if (data.ok) { setStatus(`✓ ${data.sent} 件のメールを送信しました！`, 'ok'); }
+    else         { setStatus(`エラー: ${data.error || '送信に失敗しました'}`, 'err'); }
+  } catch(e) { setStatus('通信エラーが発生しました。', 'err'); }
   btn.disabled = false;
 }
 
@@ -518,13 +457,10 @@ async function scheduleMail() {
   if (!subject)    { setStatus('件名を入力してください', 'err'); return; }
   if (!body)       { setStatus('本文を入力してください', 'err'); return; }
   if (!scheduleDt) { setStatus('配信予定日時を入力してください', 'err'); return; }
-
   const scheduleDate = new Date(scheduleDt);
   if (scheduleDate <= new Date()) { setStatus('配信日時は未来の日時を指定してください', 'err'); return; }
-
   const dateStr = scheduleDate.toLocaleString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   if (!confirm(`件名：${subject}\n配信日時：${dateStr}\n\nこの日時に予約配信します。よろしいですか？`)) return;
-
   const btn = document.getElementById('schedule-btn');
   btn.disabled = true;
   setStatus('予約中...', '');
@@ -533,35 +469,12 @@ async function scheduleMail() {
     const data = await res.json();
     if (data.ok) {
       setStatus(`✓ ${dateStr} に予約しました！`, 'ok');
-      showScheduleBanner(subject, scheduleDate.toISOString());
+      document.getElementById('schedule-dt').value = '';
+      loadScheduleStatus(); // 一覧を再読み込み
     } else {
       setStatus(`エラー: ${data.error || '予約に失敗しました'}`, 'err');
     }
-  } catch(e) {
-    setStatus('通信エラーが発生しました。', 'err');
-  }
-  btn.disabled = false;
-}
-
-// ===== CANCEL =====
-async function cancelSchedule() {
-  if (!confirm('予約配信をキャンセルします。よろしいですか？')) return;
-  const btn = document.getElementById('cancel-btn');
-  btn.disabled = true;
-  setStatus('キャンセル中...', '');
-  try {
-    const res  = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ action: 'cancelSchedule' }) });
-    const data = await res.json();
-    if (data.ok) {
-      document.getElementById('schedule-dt').value = '';
-      hideScheduleBanner();
-      setStatus('✓ 予約をキャンセルしました。', 'ok');
-    } else {
-      setStatus('エラー: キャンセルに失敗しました', 'err');
-    }
-  } catch(e) {
-    setStatus('通信エラーが発生しました', 'err');
-  }
+  } catch(e) { setStatus('通信エラーが発生しました。', 'err'); }
   btn.disabled = false;
 }
 
@@ -580,17 +493,9 @@ async function saveDraftToDrive() {
   try {
     const res    = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ action: 'saveDraft', data }) });
     const result = await res.json();
-    if (result.ok) {
-      btn.textContent = '✓ 保存';
-      setTimeout(() => btn.textContent = '保存', 2000);
-    } else {
-      btn.textContent = '保存';
-      alert('保存に失敗しました: ' + (result.error || '不明なエラー'));
-    }
-  } catch(e) {
-    btn.textContent = '保存';
-    alert('通信エラーが発生しました');
-  }
+    if (result.ok) { btn.textContent = '✓ 保存'; setTimeout(() => btn.textContent = '保存', 2000); }
+    else           { btn.textContent = '保存'; alert('保存に失敗しました: ' + (result.error || '不明なエラー')); }
+  } catch(e) { btn.textContent = '保存'; alert('通信エラーが発生しました'); }
 }
 
 // ===== DRAFT: LIST =====
@@ -604,18 +509,15 @@ async function showDraftList() {
     if (result.ok && result.drafts.length > 0) {
       listEl.innerHTML = result.drafts.map(d => {
         const issue = d.name.replace('draft_', '').replace('.json', '');
-        const date  = new Date(d.updated).toLocaleString('ja-JP');
         return `<div class="draft-item" onclick="loadDraftFromDrive('${issue}')">
           <div class="draft-item-name">${issue}</div>
-          <div class="draft-item-date">${date}</div>
+          <div class="draft-item-date">${new Date(d.updated).toLocaleString('ja-JP')}</div>
         </div>`;
       }).join('');
     } else {
       listEl.innerHTML = '<p class="draft-empty">下書きはまだありません</p>';
     }
-  } catch(e) {
-    listEl.innerHTML = '<p class="draft-empty">読み込みに失敗しました</p>';
-  }
+  } catch(e) { listEl.innerHTML = '<p class="draft-empty">読み込みに失敗しました</p>'; }
 }
 
 // ===== DRAFT: LOAD =====
@@ -634,14 +536,10 @@ async function loadDraftFromDrive(issue) {
       closeDraftModal();
       setStatus('✓ 下書きを読み込みました', 'ok');
     }
-  } catch(e) {
-    alert('読み込みに失敗しました');
-  }
+  } catch(e) { alert('読み込みに失敗しました'); }
 }
 
-function closeDraftModal() {
-  document.getElementById('draft-modal').classList.remove('open');
-}
+function closeDraftModal() { document.getElementById('draft-modal').classList.remove('open'); }
 
 function setStatus(msg, cls) {
   const el = document.getElementById('send-status');
