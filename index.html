@@ -1,573 +1,606 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>karasuletters — editor</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap');
-
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-:root {
-  --black: #111110;
-  --black2: #1a1a18;
-  --cream: #f0ede6;
-  --gold: #c8b89a;
-  --mid: #888880;
-  --border: #2a2a28;
-  --surface: #1e1e1c;
-}
-
-html, body {
-  height: 100%;
-  background: var(--black);
-  color: var(--cream);
-  font-family: 'EB Garamond', Georgia, serif;
-}
-
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-  opacity: 0.35;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.app {
-  position: relative;
-  z-index: 1;
-  min-height: 100vh;
-  max-width: 680px;
-  margin: 0 auto;
-  padding: 0 0 80px;
-}
-
-.top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 24px 28px 20px;
-  border-bottom: 1px solid var(--border);
-}
-.top-logo { font-size: 11px; letter-spacing: 0.3em; color: var(--gold); text-transform: uppercase; }
-.top-mode { display: flex; gap: 4px; }
-.mode-btn {
-  font-family: 'EB Garamond', Georgia, serif;
-  font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
-  padding: 6px 14px; background: transparent; border: 1px solid var(--border);
-  color: var(--mid); cursor: pointer; transition: all 0.2s;
-}
-.mode-btn.active { background: var(--cream); color: var(--black); border-color: var(--cream); }
-
-/* ===== SCHEDULE LIST ===== */
-.schedule-list-wrap {
-  margin: 20px 28px 0;
-  display: none;
-}
-.schedule-list-wrap.visible { display: block; }
-.schedule-list-title {
-  font-size: 10px; letter-spacing: 0.25em; color: var(--gold);
-  text-transform: uppercase; margin-bottom: 10px;
-}
-.schedule-item {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 16px;
-  background: var(--surface); border: 1px solid var(--border);
-  margin-bottom: 6px;
-}
-.schedule-item-info { flex: 1; min-width: 0; }
-.schedule-item-subject { font-size: 15px; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.schedule-item-date { font-size: 11px; color: var(--mid); letter-spacing: 0.05em; font-style: italic; }
-.schedule-cancel-btn {
-  font-family: 'EB Garamond', Georgia, serif;
-  font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
-  padding: 6px 12px; background: transparent;
-  border: 1px solid #c87a7a; color: #c87a7a;
-  cursor: pointer; transition: all 0.2s; flex-shrink: 0;
-}
-.schedule-cancel-btn:hover { background: #c87a7a; color: var(--black); }
-
-.fields { padding: 28px 28px 0; display: flex; flex-direction: column; gap: 20px; }
-.field-label { font-size: 10px; letter-spacing: 0.25em; color: var(--gold); text-transform: uppercase; display: block; margin-bottom: 8px; }
-input[type="text"], input[type="datetime-local"], textarea {
-  width: 100%; background: var(--surface); border: 1px solid var(--border);
-  color: var(--cream); font-family: 'EB Garamond', Georgia, serif;
-  font-size: 16px; padding: 12px 16px; outline: none;
-  transition: border-color 0.2s; resize: none; -webkit-appearance: none;
-}
-input[type="text"]:focus, input[type="datetime-local"]:focus, textarea:focus { border-color: var(--gold); }
-input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
-
-.claude-panel { padding: 28px 28px 0; }
-.claude-prompt-wrap { display: flex; gap: 8px; }
-.claude-prompt-wrap textarea { flex: 1; height: 80px; }
-.claude-btn {
-  font-family: 'EB Garamond', Georgia, serif; font-size: 11px;
-  letter-spacing: 0.2em; text-transform: uppercase; padding: 0 18px;
-  background: var(--surface); border: 1px solid var(--gold); color: var(--gold);
-  cursor: pointer; transition: all 0.2s; white-space: nowrap; align-self: stretch;
-}
-.claude-btn:hover { background: var(--gold); color: var(--black); }
-.claude-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.claude-status { font-size: 11px; color: var(--mid); letter-spacing: 0.1em; margin-top: 10px; min-height: 18px; font-style: italic; }
-
-.divider { margin: 28px 28px 0; border: none; border-top: 1px solid var(--border); }
-
-.body-wrap { padding: 24px 28px 0; }
-#body-editor {
-  width: 100%; min-height: 320px; background: var(--surface);
-  border: 1px solid var(--border); color: var(--cream);
-  font-family: 'EB Garamond', Georgia, serif; font-size: 17px;
-  line-height: 1.9; padding: 20px; outline: none;
-  transition: border-color 0.2s; resize: vertical;
-}
-#body-editor:focus { border-color: var(--gold); }
-#body-editor::placeholder { color: #444440; }
-
-#preview-wrap { padding: 24px 28px 0; display: none; }
-.preview-frame { border: 1px solid var(--border); background: #f0ede6; width: 100%; min-height: 400px; overflow: hidden; }
-#preview-inner { width: 100%; padding: 0; }
-
-.send-bar {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
-  background: var(--black2); border-top: 1px solid var(--border);
-  padding: 16px 28px; display: flex; align-items: center; gap: 12px;
-  max-width: 680px; margin: 0 auto;
-}
-.send-btn {
-  font-family: 'EB Garamond', Georgia, serif; font-size: 12px;
-  letter-spacing: 0.25em; text-transform: uppercase; padding: 14px 28px;
-  background: var(--cream); color: var(--black); border: none;
-  cursor: pointer; transition: background 0.2s; flex-shrink: 0;
-}
-.send-btn:hover { background: var(--gold); }
-.send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.send-status { font-size: 13px; color: var(--mid); font-style: italic; flex: 1; }
-.send-status.ok { color: #7ab87a; }
-.send-status.err { color: #c87a7a; }
-
-/* ===== MODAL ===== */
-.modal-overlay {
-  display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,0.7); z-index: 100;
-  align-items: center; justify-content: center;
-}
-.modal-overlay.open { display: flex; }
-.modal {
-  background: var(--black2); border: 1px solid var(--border);
-  width: 90%; max-width: 420px; max-height: 70vh; overflow-y: auto; padding: 28px;
-}
-.modal-title { font-size: 11px; letter-spacing: 0.25em; color: var(--gold); text-transform: uppercase; margin-bottom: 20px; }
-.draft-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 0; border-bottom: 1px solid var(--border);
-}
-.draft-item-info { flex: 1; min-width: 0; cursor: pointer; }
-.draft-item-info:hover .draft-item-name { color: var(--gold); }
-.draft-item-name { font-size: 15px; margin-bottom: 4px; transition: color 0.2s; }
-.draft-item-date { font-size: 11px; color: var(--mid); letter-spacing: 0.05em; }
-.draft-delete-btn {
-  font-family: 'EB Garamond', Georgia, serif;
-  font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
-  padding: 5px 10px; background: transparent;
-  border: 1px solid #c87a7a; color: #c87a7a;
-  cursor: pointer; transition: all 0.2s; flex-shrink: 0;
-}
-.draft-delete-btn:hover { background: #c87a7a; color: var(--black); }
-.modal-close {
-  font-family: 'EB Garamond', Georgia, serif; font-size: 11px;
-  letter-spacing: 0.2em; text-transform: uppercase; padding: 10px 20px;
-  background: transparent; border: 1px solid var(--border);
-  color: var(--mid); cursor: pointer; margin-top: 20px; width: 100%;
-}
-.draft-empty { font-size: 14px; color: var(--mid); font-style: italic; }
-
-@media (max-width: 600px) {
-  .app { padding-bottom: 120px; }
-  .top-bar { padding: 14px 16px; flex-wrap: wrap; gap: 8px; }
-  .top-logo { font-size: 10px; letter-spacing: 0.2em; }
-  .top-mode { gap: 3px; flex-wrap: wrap; }
-  .mode-btn { font-size: 9px; padding: 5px 10px; letter-spacing: 0.12em; }
-  .schedule-list-wrap { margin: 16px 16px 0; }
-  .fields { padding: 20px 16px 0; gap: 16px; }
-  .claude-panel { padding: 20px 16px 0; }
-  .body-wrap { padding: 18px 16px 0; }
-  .divider { margin: 20px 16px 0; }
-  #preview-wrap { padding: 18px 16px 0; }
-  input[type="text"], input[type="datetime-local"], textarea { font-size: 15px; padding: 10px 14px; }
-  #body-editor { font-size: 16px; min-height: 240px; }
-  .claude-prompt-wrap { flex-direction: column; }
-  .claude-prompt-wrap textarea { height: 72px; }
-  .claude-btn { width: 100%; padding: 12px; align-self: auto; }
-  .send-bar { padding: 10px 16px; flex-wrap: wrap; gap: 8px; left: 0; right: 0; max-width: 100%; }
-  .send-btn { font-size: 10px; letter-spacing: 0.15em; padding: 10px 14px; flex: 1; text-align: center; }
-  .send-status { font-size: 11px; width: 100%; flex: none; text-align: center; padding: 2px 0 4px; }
-  .modal { padding: 20px 18px; }
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shikine Watanabe</title>
+  <link rel="icon" href="favicon.ico">
+  <meta name="description" content="渡邊織音 — 建築・構造設計・舞台美術">
+  <meta name="keywords" content="渡邊織音,watanabeshikine,Shikine,Watanabe,建築,構造,舞台美術,scenographic,scenic art,architecture">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="app">
+<div id="wrap">
 
-  <div class="top-bar">
-    <span class="top-logo">karasuletters — editor</span>
-    <div class="top-mode">
-      <button class="mode-btn active" id="btn-edit" onclick="setMode('edit')">編集</button>
-      <button class="mode-btn" id="btn-preview" onclick="setMode('preview')">プレビュー</button>
-      <button class="mode-btn" onclick="saveDraftToDrive()">保存</button>
-      <button class="mode-btn" onclick="showDraftList()">下書き</button>
+  <header>
+    <h1>
+      <span class="ja">渡邊織音</span><span class="sep">/</span><span class="en">WATANABE, Shikine</span>
+    </h1>
+    <div class="contact">
+      <a href="mailto:watanabeshikine@gmail.com">watanabeshikine@gmail.com</a>
+      &ensp;/&ensp; LINE: watanabeshikine
     </div>
-  </div>
-
-  <!-- 予約一覧 -->
-  <div class="schedule-list-wrap" id="schedule-list-wrap">
-    <p class="schedule-list-title" style="margin: 0 0 10px; font-size:10px; letter-spacing:0.25em; color:var(--gold); text-transform:uppercase;">配信予約一覧</p>
-    <div id="schedule-list"></div>
-  </div>
-
-  <div class="fields">
-    <div>
-      <label class="field-label">号数 / Issue</label>
-      <input type="text" id="issue" placeholder="No.001" value="No.001">
+    <div class="sns">
+      <a href="https://www.instagram.com/watanabeshikine/" target="_blank">Instagram</a>
+      <a href="https://www.threads.net/@watanabeshikine" target="_blank">Threads</a>
+      <a href="https://twitter.com/watanabeshikine" target="_blank">X</a>
+      <a href="https://www.facebook.com/watanabeshikine" target="_blank">Facebook</a>
     </div>
-    <div>
-      <label class="field-label">件名 / Subject</label>
-      <input type="text" id="subject" placeholder="【karasuletters】近況とお知らせ">
+  </header>
+
+  <section class="profile">
+    <ul class="role-list">
+      <li>建築設計・建築構造設計</li>
+      <li><a href="https://www.hachisu-kikaku.com/blank" target="_blank">演劇 グループ・野原</a> 舞台美術</li>
+      <li><a href="https://nomado.info/" target="_blank">NPO 野馬土</a> 理事 &mdash; Nomado Non Profit Organization</li>
+      <li>ゲストハウス 蛇崩ハウス 大家 &mdash; Share community house "Jakuzure" Manager</li>
+      <li>美術・ワークショップ・家具製作・リノベーション</li>
+    </ul>
+    <div class="newsletter-bar">
+      <p class="nl-label">メールマガジン</p>
+      <form id="nl-form" class="nl-form">
+        <input type="text"  id="nl-name"  placeholder="お名前" required class="nl-input">
+        <input type="email" id="nl-email" placeholder="メールアドレス" required class="nl-input">
+        <button type="submit" class="newsletter-btn" id="nl-btn">購読する</button>
+      </form>
+      <div id="nl-thanks" class="nl-thanks" hidden>ご登録ありがとうございます。</div>
+      <div id="nl-error" class="nl-thanks" hidden style="color:#c87a7a;"></div>
     </div>
-    <div>
-      <label class="field-label">日付 / Date</label>
-      <input type="text" id="date" placeholder="2026年6月">
-    </div>
-    <div>
-      <label class="field-label">配信予定日時 / Schedule</label>
-      <input type="datetime-local" id="schedule-dt" style="color-scheme:dark;">
-    </div>
-    <div>
-      <label class="field-label">署名 / Sign-off</label>
-      <input type="text" id="signoff" placeholder="Shikine Watanabe" value="Shikine Watanabe">
-    </div>
-  </div>
+  </section>
 
-  <hr class="divider">
-
-  <div class="claude-panel">
-    <label class="field-label">Claude に原稿を書いてもらう</label>
-    <div class="claude-prompt-wrap">
-      <textarea id="claude-prompt" placeholder="例：今月は豊岡演劇祭に参加しました。舞台美術について書いてください。"></textarea>
-      <button class="claude-btn" id="claude-gen-btn" onclick="generateWithClaude()">生成</button>
-    </div>
-    <p class="claude-status" id="claude-status"></p>
-  </div>
-
-  <hr class="divider">
-
-  <div class="body-wrap" id="edit-wrap">
-    <label class="field-label">本文</label>
-    <textarea id="body-editor" placeholder="ここに本文を書いてください。&#10;&#10;Claudeで生成した文章をそのまま使うか、自分で書き換えて仕上げてください。"></textarea>
-  </div>
-
-  <div id="preview-wrap">
-    <label class="field-label">プレビュー</label>
-    <div class="preview-frame">
-      <div id="preview-inner"></div>
-    </div>
-  </div>
-
-</div>
-
-<!-- DRAFT MODAL -->
-<div class="modal-overlay" id="draft-modal">
-  <div class="modal">
-    <p class="modal-title">下書き一覧</p>
-    <div id="draft-list"></div>
-    <button class="modal-close" onclick="closeDraftModal()">閉じる</button>
-  </div>
-</div>
-
-<!-- SEND BAR -->
-<div class="send-bar">
-  <button class="send-btn" id="send-btn" onclick="sendMail()">今すぐ配信</button>
-  <button class="send-btn" id="schedule-btn" onclick="scheduleMail()" style="background:transparent;border:1px solid var(--gold);color:var(--gold);">予約配信</button>
-  <span class="send-status" id="send-status">配信日時を設定して予約するか、今すぐ配信できます</span>
-</div>
-
-<script>
-const GAS_URL     = 'https://script.google.com/macros/s/AKfycbyieDzOkdfRhkqzWx51YnUC6Y-537NnTCfpDkCaXGNOLMYJTDzG36kBhgcllVQu1VV5tQ/exec';
-const GAS_HEADERS = { 'Content-Type': 'text/plain' };
-
-function gasPost(body) {
-  return fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify(body) }).then(r => r.json());
-}
-
-// ===== 予約一覧 =====
-async function loadScheduleStatus() {
-  try {
-    const result = await gasPost({ action: 'getScheduleStatus' });
-    renderScheduleList(result.schedules || []);
-  } catch(e) {}
-}
-
-function renderScheduleList(schedules) {
-  const wrap   = document.getElementById('schedule-list-wrap');
-  const listEl = document.getElementById('schedule-list');
-  if (!schedules || schedules.length === 0) { wrap.classList.remove('visible'); return; }
-  wrap.classList.add('visible');
-  listEl.innerHTML = schedules.map(s => {
-    const dateStr = new Date(s.scheduledAt).toLocaleString('ja-JP', {
-      year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
-    return `<div class="schedule-item" id="sched-${s.id}">
-      <div class="schedule-item-info">
-        <div class="schedule-item-subject">${escHtml(s.subject)}</div>
-        <div class="schedule-item-date">${dateStr}</div>
+  <section class="works">
+    <div class="works-header">
+      <h2>Works</h2>
+      <div class="view-toggle">
+        <button class="toggle-btn active" data-view="timeline">年代順</button>
+        <button class="toggle-btn" data-view="genre">ジャンル別</button>
       </div>
-      <button class="schedule-cancel-btn" onclick="cancelScheduleById('${s.id}', this)">取消</button>
-    </div>`;
-  }).join('');
-}
+    </div>
 
-async function cancelScheduleById(id, btn) {
-  if (!confirm('この予約をキャンセルしますか？')) return;
-  btn.disabled = true; btn.textContent = '取消中...';
-  try {
-    const result = await gasPost({ action: 'cancelSchedule', id });
-    if (result.ok) {
-      document.getElementById('sched-' + id)?.remove();
-      if (!document.querySelector('.schedule-item')) document.getElementById('schedule-list-wrap').classList.remove('visible');
-      setStatus('✓ 予約をキャンセルしました。', 'ok');
-    } else {
-      btn.disabled = false; btn.textContent = '取消';
-      setStatus('エラー: キャンセルに失敗しました', 'err');
-    }
-  } catch(e) { btn.disabled = false; btn.textContent = '取消'; setStatus('通信エラーが発生しました', 'err'); }
-}
+    <div id="timeline-view">
 
-// ===== MODE =====
-function setMode(mode) {
-  const editWrap    = document.getElementById('edit-wrap');
-  const previewWrap = document.getElementById('preview-wrap');
-  document.getElementById('btn-edit').classList.toggle('active', mode === 'edit');
-  document.getElementById('btn-preview').classList.toggle('active', mode === 'preview');
-  if (mode === 'preview') {
-    editWrap.style.display    = 'none';
-    previewWrap.style.display = 'block';
-    document.getElementById('preview-inner').innerHTML = buildHTML();
-  } else {
-    editWrap.style.display    = 'block';
-    previewWrap.style.display = 'none';
+    <div class="filter-bar">
+      <button class="filter-chip active" data-filter="all">全て</button>
+      <button class="filter-chip" data-filter="stage">舞台美術</button>
+      <button class="filter-chip" data-filter="mv">MV</button>
+      <button class="filter-chip" data-filter="arch">建築</button>
+    </div>
+
+    <div class="year-block">
+      <h3>2027</h3>
+      <ul class="work-list">
+        <!-- 例: <li><span class="tag t-stage">舞台美術</span>作品名＠会場</li> -->
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2026</h3>
+      <ul class="work-list">
+        <!-- 例: <li><span class="tag t-arch">建築</span>物件名＠場所</li> -->
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2025</h3>
+      <ul class="work-list">
+        <!-- 例: <li><span class="tag t-mv">MV</span>アーティスト名『曲名』</li> -->
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2024</h3>
+      <ul class="work-list">
+        <li>長野県・富士見町に移住</li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2023</h3>
+      <ul class="work-list">
+        <li>映像美術 &ensp;坂本悠花里『白い花果』パイロット版＠旧清里高原ホテル・山梨県（北杜市）</li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2022</h3>
+      <ul class="work-list">
+        <li>舞台美術 &ensp;亜人間都市『草、生える』＠早稲田小劇場どらま館・東京</li>
+        <li>舞台美術 &ensp;鳥公園『昼の街を歩く』＠PARA・東京</li>
+        <li>舞台美術 &ensp;TACT Festival 2022 ヌトミック『ここ！』＠中池袋公園・東京</li>
+        <li>舞台美術 &ensp;円盤に乗る派『仮想的な失調』＠吉祥寺シアター・東京</li>
+        <li>舞台美術 &ensp;豊岡演劇祭 ヌトミック『ぼんやりブルース』＠静思堂シアター・兵庫県豊岡市</li>
+        <li>舞台美術 &ensp;ヌトミック『SUPERHUMAN2022』＠東京タワー・芝公園・東京</li>
+        <li>舞台美術 &ensp;ミニセレ企画 ヌトミック『ぼんやりブルース』＠愛知県芸術劇場小ホール</li>
+        <li>舞台美術 &ensp;円盤に乗る派『MORAL』＠北千住BUOY・東京</li>
+        <li>構造設計 &ensp;『川口の住宅』＠埼玉県川口市（木造）</li>
+        <li>構造設計 &ensp;久我原の歯科医院＠東京（看板部分・鉄骨）</li>
+        <li>構造設計 &ensp;飯能の住宅＠埼玉県飯能（木造）</li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2021</h3>
+      <ul class="work-list">
+        <li>舞台美術 &ensp;キュイ『まだなにもはなしていないのに』音響上演＠アトリエ春風舎・東京</li>
+        <li>舞台美術 &ensp;グループ・野原『自由の国のイフィゲーニエ』＠こまばアゴラ劇場・東京</li>
+        <li>舞台美術 &ensp;ヌトミック『波のような人』＠愛知県芸術劇場 小ホール</li>
+        <li>舞台美術 &ensp;BangkokDesignweek2021『The City &amp; The City 1.5 (Bangkok version)』＠バンコク・タイ王国</li>
+        <li>舞台美術 &ensp;東京芸術祭From the Farm『フレ フレ Ostrich!! Hayupang Die-Bow-Ken!』＠南大塚ホール・東京</li>
+        <li>舞台美術 &ensp;ヌトミック『ぼんやりブルース』＠こまばアゴラ劇場・東京</li>
+        <li>舞台美術 &ensp;ヌトミックの広場『何事もチューン』＠飯島商店・神奈川（横須賀）</li>
+        <li>構造設計 &ensp;『グランアーブル』＠東京 テラス部分</li>
+        <li>構造設計 &ensp;『田端の住宅』＠東京 住宅改修設計（木造）</li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2020</h3>
+      <ul class="work-list">
+        <li>12〜 &ensp;<a href="https://photos.app.goo.gl/3n1uYLWEDGCQD5ANA" target="_blank" class="tag t-foto" data-preview="https://photos.fife.usercontent.google.com/pw/AP1GczO2adQQEEp0pUk48E1MalzcIk67T8qjCNGOH7uXZLeeQzdn4EjG83Bl=w1074-h604-s-no-gm?authuser=0">舞台美術</a>読書の夕べ『授業』＠アンスティチュフランセ</li>
+        <li>1〜 &ensp;<a href="https://photos.app.goo.gl/dqoNuh7Psk4dNDFv5" target="_blank" class="tag t-foto" data-preview="https://lh3.googleusercontent.com/pw/AP1GczNqjyIpZ5pjehKfmlHx9FyABEupjVddOkTeb5jnLFgyM9N5rsAK5rhr3qpVACdRgQni38Q106X-pjU6SN_Q9DWsw-cwvK7u6HESzupQdh_StlNZjvHYG7y7GBgFF3hKHtYF9t9oWiq25RUlgvtusSwQ=w1075-h806-s-no-gm?authuser=0">舞台美術</a>円盤に乗る派『おはようクラブ』＠吉祥寺シアター・東京</li>
+        <li>2〜 &ensp;<a href="https://photos.app.goo.gl/S9LNGJAUd97g26Dz9" target="_blank" class="tag t-foto" data-preview="https://lh3.googleusercontent.com/pw/AP1GczMv8efWbJsyfdbLhJNJGVyz55FJUwccVPWLQ6wooXHcCTMpif74inmL0e_J1UNlNphNsq77FYA0jXE8chlmknx17b_X6rv_kxYeDf70228MbVOhSwJQMcJ3mOlUfYaI8O0Vt4c8cnQYIdg9mcDziRc-=w1075-h760-s-no-gm?authuser=0">舞台美術</a>ヌトミック『それからの街』＠STスポット・横浜</li>
+        <li>6〜 &ensp;<a href="https://photos.app.goo.gl/NvUgtM6i9iovjsit9" target="_blank" class="tag t-foto" data-preview="https://lh3.googleusercontent.com/pw/AP1GczPdx11U63pCy8pp2zO4ccxBkns5ixij5LY4p1LU6knZff4LsvqbULev_jF3QjR1kZvbpGjM9pQ1u2XeNXO7liIlnUS2A0iBSCG3bs9TMBeZTNavsbvnsy2j0Qmlzo7JAeGIQvV2iS0zXfaU_JSn_QnWZg=w1075-h806-s-no-gm?authuser=0">舞台美術</a>吉祥寺シアター『吉祥寺からっぽの劇場祭』＠吉祥寺シアター・東京・奥多摩</li>
+        <li>11〜 &ensp;<a href="https://photos.app.goo.gl/2t8sFB4mteRaDDRM7" target="_blank" class="tag t-foto" data-preview="https://lh3.googleusercontent.com/pw/AP1GczPge-GHONP6YmLO8VuaMpNQ6ARFVgZwxN3xv-eh9W04i5ErWbBKaKBzQsWOWFbTz_7TS3_gqXIE7btHpSoBgAbQucqFjl1zB3Q2F1a_Pm1vmNfiqbRzdhXmzTwjgQhKhEDJ1n2O--4uINCiWcrjnoCn=w1075-h428-s-no-gm?authuser=0">舞台美術</a>フェスティバル／トーキョー20『The City &amp; The City: Divided Senses』＠東京芸術劇場シアターウェスト</li>
+        <li>10〜 &ensp;<a href="https://photos.app.goo.gl/QkyJ6XnDYAx6JHUx9" target="_blank" class="tag t-foto" data-preview="https://lh3.googleusercontent.com/pw/AP1GczNKLu-q1ML9tW927cZDIvEVdRRKsiSS5_KOzBLewwFtKFgO6WgW-14oxvP7iRAN7nWUqFtVZIPadWs5v2S_GG9FiyROO0ddS4SV59hHRsXTA14XXba7t0vArX1v8GSMGpZzkWyE7-uetvbIYKDRgIfK=w655-h873-s-no-gm?authuser=0">舞台美術</a>女の子には内緒『老いは煙の森を駆ける』＠こまばアゴラ劇場・東京</li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2019</h3>
+      <ul class="work-list">
+        <li>10〜 &ensp;<a href="https://photos.app.goo.gl/D1hsq9QSTpMZ2eEv8" target="_blank" class="tag t-foto" data-preview="https://photos.fife.usercontent.google.com/pw/AP1GczO2DPP7UaLdzZT1KgmpLZaHVApXgS84X2M3YBU3e__ewP1Dc5EGxTcm=w873-h873-s-no-gm?authuser=0">構造設計</a>HONEST HOUSE＠東京（コンクリート造）</li>
+        <li>12〜 &ensp;<a href="https://photos.app.goo.gl/iYkLR26D1JGo3ayy8" target="_blank" class="tag t-foto">舞台美術</a><a href="http://www.komaba-agora.com/play/8691" target="_blank">ハチス企画『まさに世界の終わり』＠池袋・春風舎</a></li>
+        <li>11〜 &ensp;<a href="https://photos.app.goo.gl/aysoVxTxwjJDnkTB8" target="_blank" class="tag t-foto">舞台美術</a><a href="http://www.komaba-agora.com/play/8691" target="_blank">ハチス企画『まさに世界の終わり』＠池袋・春風舎</a></li>
+        <li>5〜 &ensp;<a href="https://photos.app.goo.gl/x5AHKQYH5GfzCVJy6" target="_blank" class="tag t-foto">舞台美術</a><a href="http://www.komaba-agora.com/play/7968" target="_blank">ヌトミック『お気に召すまま』＠こまばアゴラ劇場</a></li>
+        <li>3〜 &ensp;<a href="https://photos.app.goo.gl/hbo34fA8vrfBZvsF7" target="_blank" class="tag t-foto">舞台美術</a><a href="https://youtu.be/8pZKgsf1pic" target="_blank" class="tag t-movie">撮影</a><a href="https://youtu.be/9-fTUpsxAKQ" target="_blank" class="tag t-gray">タイムラプス</a><a href="http://www.geigeki.jp/performance/theater203/" target="_blank">鳥公園のアタマの中展２『おねしょ沼の終わらない温かさについて』＠東京芸術劇場 アトリエイースト</a></li>
+        <li>1〜 &ensp;<a href="https://photos.app.goo.gl/jEidZV2FZdg89Y7W8" target="_blank" class="tag t-foto">舞台美術</a><a href="https://youtu.be/dWXkx6sf2YA" target="_blank" class="tag t-movie">撮影</a><a href="https://youtu.be/SAg-if4scp8" target="_blank" class="tag t-gray">タイムラプス</a><a href="http://www.komaba-agora.com/play/6781" target="_blank">ハチス企画『ハッピーな日々』＠池袋・春風舎</a></li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2018</h3>
+      <ul class="work-list">
+        <li>12〜 &ensp;<a href="https://photos.app.goo.gl/75NaM9ds8pkvhgpg8" target="_blank" class="tag t-foto">舞台美術</a><a href="https://kan-art-academy.jimdo.com/" target="_blank">某C舞台・舞台美術＠神奈川県・横須賀</a></li>
+        <li>10〜 &ensp;<a href="https://photos.app.goo.gl/RN1C12TeRLosCSNVA" target="_blank" class="tag t-foto">企画・運営・撮影</a>コットンプロジェクト収穫祭＠福島県・小高</li>
+        <li>10〜 &ensp;<a href="https://photos.app.goo.gl/gSJ6rMVvFQqLNNoF9" target="_blank" class="tag t-foto">模型製作</a>SUSKENERGY 風力発電用模型の製作＠福島県・小高</li>
+        <li>9〜 &ensp;舞台手伝 S舞台の運搬手伝い＠福島県</li>
+        <li>9〜 &ensp;<a href="https://photos.app.goo.gl/YCQXQJpF9128ZdCW6" target="_blank" class="tag t-foto">模型製作</a><a href="https://ofj.or.jp/" target="_blank">SUSKENERGY オーガニックライフスタイルエキスポ出展＠東京・国際フォーラム</a></li>
+        <li>9〜 &ensp;建築設計 O物件の構造設計＠東京</li>
+        <li>8〜 &ensp;建築関係 Kプロジェクト見学＠京都・中川</li>
+        <li>8〜 &ensp;映画撮影 野沢プロジェクト＠早稲田大学</li>
+        <li>8〜 &ensp;学校業務 早稲田大学芸術学校TA</li>
+        <li>7〜 &ensp;ワークショップ・舞台美術 <a href="https://avantijapan.co.jp/social-business/ekodomo-juku" target="_blank">わくわくのびのびえこども塾『ライオンキング』＠長野県小諸市エコビレッジ</a></li>
+        <li>〜6 &ensp;建築設計・構造設計 F邸＠神奈川県</li>
+        <li>6〜 &ensp;<a href="https://photos.app.goo.gl/prRYDXANQbALWHiT7" target="_blank" class="tag t-foto">舞台美術・スケッチ</a><a href="https://youtu.be/Xpuhd5hhS78" target="_blank" class="tag t-movie">撮影</a><a href="http://togaconcour.tumblr.com/post/176410923512/%E5%88%A9%E8%B3%80%E6%BC%94%E5%8A%87%E4%BA%BA%E3%82%B3%E3%83%B3%E3%82%AF%E3%83%BC%E3%83%AB2018%E8%88%9E%E5%8F%B0%E5%86%99%E7%9C%9F" target="_blank">グループ・野原 2018利賀演劇人コンクール『冒した者』＠利賀芸術公演 岩舞台</a></li>
+        <li>5〜 &ensp;<a href="https://photos.app.goo.gl/rwR4DACEsEpvt8188" target="_blank" class="tag t-foto">舞台美術・記録・スケッチ</a><a href="https://youtu.be/A4AcGv0MaX0" target="_blank" class="tag t-movie">撮影</a><a href="http://buoy.or.jp/archives/program/kiligs" target="_blank">Ank『キリグス』＠北千住BUoY</a></li>
+        <li>5〜 &ensp;映像美術 <a href="https://www.youtube.com/watch?v=-4CGEETjuJ8" target="_blank">関取花『蛍』MV</a></li>
+        <li>4〜 &ensp;<a href="https://nomado.info/" target="_blank">NPO野馬土</a>の理事に再任（４期目）</li>
+        <li>4〜 &ensp;構造設計・舞台美術を中心に活動を本格化</li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2017</h3>
+      <ul class="work-list">
+        <li>12〜 &ensp;舞台美術 <a href="https://youtu.be/e2HQmj5K1sA" target="_blank" class="tag t-movie">撮影</a><a href="https://www.youtube.com/watch?v=e2HQmj5K1sA&amp;t=42s" target="_blank">『愛するとき死ぬとき』より 青春/合唱 公開稽古＠北千住BUoY</a></li>
+        <li>12〜 &ensp;<a href="https://photos.app.goo.gl/sKn1XWxq5SmhzpibA" target="_blank" class="tag t-foto">稽古スケッチ</a><a href="https://youtu.be/TaE2o6WRqTI" target="_blank" class="tag t-movie">映像</a><a href="https://www.youtube.com/watch?v=TaE2o6WRqTI" target="_blank">『愛するとき死ぬとき』より 青春/合唱＠早稲田どらま館</a></li>
+        <li>11〜 &ensp;<a href="https://photos.app.goo.gl/oqDQ6XWtDu5qizQS8" target="_blank" class="tag t-foto">舞台美術・スケッチ</a><a href="https://v2.kan-geki.com/streaming/play/1030" target="_blank" class="tag t-movie">映像</a><a href="http://u112kg.tumblr.com/#history" target="_blank">『雷鳴とアンジェリカ』＠中野テルプシコール</a></li>
+        <li>11〜 &ensp;ワークショップ お面作り＠福島県・相馬 カフェ野馬土</li>
+        <li>10〜 &ensp;建築構造 シェアハウスのお茶室自力建設 技術的お手伝い＠鎌倉</li>
+        <li>4〜 &ensp;家具製作 洗濯機収納場所</li>
+        <li>4〜 &ensp;舞台美術 <a href="https://www.hachisu-kikaku.com/blank" target="_blank">グループ・野原</a>を蜂巣ももによる呼びかけで参加・旗揚げ</li>
+        <li>2〜 &ensp;映像美術 タイムマシーン自転車</li>
+        <li>1〜 &ensp;舞台美術 <a href="https://youtu.be/nTTP6IsICm0" target="_blank" class="tag t-movie">撮影</a><a href="http://www.komaba-agora.com/play/3688" target="_blank">ハチス企画『木に花咲く』</a></li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2016</h3>
+      <ul class="work-list">
+        <li>9〜 &ensp;建築教育 早稲田大学芸術学校TA</li>
+        <li>8〜 &ensp;<a href="https://www.facebook.com/hisanohama.oopisa.kirakirahiroba/videos/1801750293372918/" target="_blank">久之浜・大久のじゃんがら祭り</a>に踊り手として参加＠福島県いわき市</li>
+        <li>8〜 &ensp;日墨学生交流プログラム ホームステイ受け入れ</li>
+        <li>4〜 &ensp;<a href="https://nomado.info/" target="_blank">NPO野馬土</a>の理事に再任（３期目）</li>
+        <li>3〜 &ensp;舞台美術 <a href="http://www.komaba-agora.com/play/3629" target="_blank">カゲヤマ気象台『水』</a></li>
+        <li>1〜 &ensp;建築設計 あたらしい宿泊空間の設計</li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2015</h3>
+      <ul class="work-list">
+        <li>4〜 &ensp;建築建設 共同空間の試験拡張</li>
+        <li>2〜5 &ensp;建築設計 シェアハウス改築→５月引越し</li>
+        <li>2〜 &ensp;あたらしい生活が始まりました</li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2014</h3>
+      <ul class="work-list">
+        <li>12〜 &ensp;楽譜・レコードのデータベース化</li>
+        <li>11〜 &ensp;舞台美術開始</li>
+        <li>10〜 &ensp;車取得・池袋引越</li>
+        <li>9〜 &ensp;構造事務所に勤務・結婚</li>
+        <li>8〜 &ensp;美術製作 <a href="http://relational-tourism.jp/" target="_blank">瀬戸内国際芸術祭</a>参加</li>
+        <li>4〜 &ensp;NPO野馬土の理事に再任（２期目）</li>
+        <li>1〜3 &ensp;WS 田んぼアート企画＠福島県・相馬市</li>
+        <li>1〜6 &ensp;WS 福島相馬滞在</li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2013</h3>
+      <ul class="work-list">
+        <li>4〜 &ensp;NPO団体に所属し福島に滞在</li>
+        <li>〜3 &ensp;大学卒業</li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2012</h3>
+      <ul class="work-list">
+        <li>11〜 &ensp;<a href="https://nomado.info/" target="_blank">NPO法人 野馬土</a> 発足→理事（１期目）</li>
+        <li>11〜 &ensp;美術製作 個展２開催＠銀座ギャラリーK</li>
+        <li>8〜 &ensp;建設 自力建設ワークショップ企画＠福島県・相馬市</li>
+        <li>4〜 &ensp;<a href="http://youkeiworkshop.blogspot.com/" target="_blank">NPO法人 有形デザイン機構</a> 理事</li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2011</h3>
+      <ul class="work-list">
+        <li>9〜 &ensp;美術製作 個展１開催＠銀座ギャラリーK</li>
+        <li>8〜 &ensp;<a href="https://photos.app.goo.gl/nKZUZwqp1y8FoqbW8" target="_blank" class="tag t-foto">企画・運営・展示</a><a href="https://photos.app.goo.gl/1h6FvS1BeY1RVBet5" target="_blank" class="tag t-foto">スケッチ</a><a href="https://www.google.com/maps/d/edit?mid=zRV5K0iPh-WE.kB0Iea0dlwFk" target="_blank" class="tag t-map">地図</a>海外建築ワークショップ企画・運営＠イタリア・ギリシャ・トルコ <span class="collab">with Nobuhiko Utsumi</span></li>
+        <li>8〜 &ensp;<a href="https://photos.app.goo.gl/j3viSeAH4gYheyzr7" target="_blank" class="tag t-foto">建設</a>日本和船を作るワークショップコラボ＠青森県</li>
+        <li>6〜 &ensp;<a href="https://photos.app.goo.gl/PqAKjoUDVWQupzvR6" target="_blank" class="tag t-foto">ツアー記録</a>東北地方 被災地ツアー企画（全５回）</li>
+        <li>5〜 &ensp;建設 東北地方 被災地 風呂の自力建設参加（全２箇所）＠岩手県</li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2010</h3>
+      <ul class="work-list">
+        <li>8〜 &ensp;<a href="https://photos.app.goo.gl/6QmHXPUExBjmfy9e8" target="_blank" class="tag t-foto">WS・スケッチ・記録</a>海外ワークショップの企画・運営＠イタリア <span class="collab">with Nobuhiko Utsumi</span></li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2009</h3>
+      <ul class="work-list">
+        <li>9〜 &ensp;<a href="https://photos.app.goo.gl/gujVseDQhva4Auzu6" target="_blank" class="tag t-foto">記録</a>外務省日墨交流研修生としてメキシコへ</li>
+        <li>8〜 &ensp;<a href="https://youtu.be/m_EDsKEI8xo" target="_blank" class="tag t-movie">撮影</a>フランス・ナントビエンナーレに参加・滞在 <span class="collab">with Kinya Maruyama</span></li>
+        <li>〜3 &ensp;書籍編集 「かたちの劇場」編集・出版イベント企画運営 <span class="collab">with Kinya Maruyama</span></li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2008</h3>
+      <ul class="work-list">
+        <li>12〜 &ensp;<a href="https://photos.app.goo.gl/6np43yG4hDc8QTic6" target="_blank" class="tag t-foto">企画・運営・展示・記録</a>クリスマスハンガーを作ろうWS＠世田谷ものづくり学校 <span class="collab">with 中田工芸</span></li>
+        <li>11〜 &ensp;美術製作 早稲田大学にてインスタレーション作品制作２ <span class="collab">with Kinya Maruyama</span></li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2007</h3>
+      <ul class="work-list">
+        <li>12〜 &ensp;企画・運営・展示・デザイン・記録 オリジナルハンガーを作ろうWS＠早稲田大学 <span class="collab">with 中田工芸</span></li>
+        <li>11〜 &ensp;美術製作 <a href="https://www.youtube.com/watch?v=Jkr9SA38nVw" target="_blank" class="tag t-movie">記録映像</a>早稲田大学にてインスタレーション作品制作１ <span class="collab">with Yusuke Kambayashi</span></li>
+        <li>2〜 &ensp;<a href="https://photos.app.goo.gl/foBnnyigLfzfeth26" target="_blank" class="tag t-foto">記録</a><a href="https://www.jardinspaysdelaloire.fr/jardin-etoile.html" target="_blank">Estuaire Jardin Etoire, Nantes, France</a> フランス・ナントビエンナーレ学生WS参加</li>
+      </ul>
+    </div>
+
+    <div class="year-block">
+      <h3>2006</h3>
+      <ul class="work-list">
+        <li>8〜 &ensp;WS 海外ワークショップへ参加＠スペイン <span class="collab">with Nobuhiko Utsumi</span></li>
+        <li>11〜 &ensp;美術製作 帰国制作報告会の展示空間の制作・施工 <span class="collab">with Masaki Ogasawara</span></li>
+      </ul>
+    </div>
+
+    </div><!-- /#timeline-view -->
+    <div id="genre-view" hidden></div>
+
+  </section>
+
+  <section class="reference">
+    <h2>Reference</h2>
+
+    <h4>旅行 WS の行程 / Collaboration</h4>
+    <ul class="ref-list">
+      <li><a href="https://www.google.com/maps/d/edit?mid=z-IuNMJ9ZSRY.kxczdOdU9wgY" target="_blank"><span class="tag t-map">地図</span>2006年の旅程・スペインなど</a></li>
+      <li><a href="https://www.google.com/maps/d/edit?mid=z-IuNMJ9ZSRY.kFQ5r8F2xR-E" target="_blank">2007年の旅程・ブルターニュ</a>（準備中）</li>
+      <li><a href="https://www.google.com/maps/d/edit?mid=z-IuNMJ9ZSRY.kCJy81WIdtvE" target="_blank">2009年の旅程・ブルターニュ</a>（準備中）</li>
+      <li><a href="https://www.google.com/maps/d/edit?mid=z-IuNMJ9ZSRY.k9HPQAputedg" target="_blank"><span class="tag t-map">地図</span>国費留学メキシコ</a></li>
+      <li><a href="https://www.google.com/maps/d/edit?mid=zw3R0iTrRyGw.kDVDyG22ccx0" target="_blank"><span class="tag t-map">地図</span>2010年の旅程・イタリア</a></li>
+      <li><a href="https://www.google.com/maps/d/edit?mid=zRV5K0iPh-WE.kB0Iea0dlwFk" target="_blank"><span class="tag t-map">地図</span>2011年の旅程・トルコ</a></li>
+      <li><a href="https://www.google.com/maps/d/edit?mid=z-IuNMJ9ZSRY.kZ5UjNB9YCTY" target="_blank">2012年の旅程・フランス</a>（準備中）</li>
+      <li><a href="https://www.google.com/maps/d/edit?mid=zb-m8HfFIVcg.kdvaGi2FNXBk" target="_blank"><span class="tag t-map">地図</span>2013年の旅程・モロッコ</a></li>
+    </ul>
+
+    <h4>映像作品 / Video Works</h4>
+    <ul class="ref-list">
+      <li><a href="https://www.youtube.com/watch?v=Jkr9SA38nVw" target="_blank"><span class="tag t-movie">映像</span>2007年・重力をテーマにした展示＠早稲田大学</a> <span class="collab">with Yusuke Kambayashi</span></li>
+      <li><a href="https://www.youtube.com/watch?v=AVDnBKMrSNM" target="_blank"><span class="tag t-movie">映像</span>2008年・薄パイル材を利用した空間構成＠早稲田大学</a> <span class="collab">with Yusuke Kambayashi</span></li>
+      <li><a href="https://youtu.be/m_EDsKEI8xo" target="_blank"><span class="tag t-movie">映像</span>2009年・ワークショップに参加した時の映像作品＠フランス</a></li>
+    </ul>
+
+    <h4>編集人として / Books</h4>
+    <ul class="ref-list">
+      <li><a href="http://www.amazon.co.jp/%E3%81%8B%E3%81%9F%E3%81%A1%E3%81%AE%E5%8A%87%E5%A0%B4%E2%80%95%E4%B8%B8%E5%B1%B1%E6%AC%A3%E4%B9%9F%E9%80%A0%E5%BD%A2%E6%95%99%E5%AE%A4-%E4%B8%B8%E5%B1%B1-%E6%AC%A3%E4%B9%9F/dp/4863580657" target="_blank">2009–10年 『かたちの劇場』 丸山欣也造形教室</a></li>
+    </ul>
+  </section>
+
+  <section class="misc">
+    <h2>Links</h2>
+    <div class="misc-links">
+      <a href="https://www.tumblr.com/blog/jakuzure-haus" target="_blank">蛇崩家</a>
+      &ensp;/&ensp;
+      <a href="https://www.facebook.com/jakuzurehaus" target="_blank">Facebook</a>
+      &ensp;/&ensp;
+      <a href="http://extrapixel.github.io/gif-animation/" target="_blank">Processing / GIF Animation</a>
+      &ensp;/&ensp;
+      <a href="https://www.tumblr.com/blog/watanabeshikine" target="_blank">日本東京往復日記</a>
+      &ensp;/&ensp;
+      <a href="http://kamimeguro.s504.xrea.com/weather.html" target="_blank">天気予報図</a>
+      &ensp;/&ensp;
+      <a href="http://kamimeguro.s504.xrea.com/weather3.html" target="_blank">気圧等高線</a>
+    </div>
+    <p class="tools">Adobe Illustrator / InDesign / Photoshop / Premiere / Processing &ensp;&middot;&ensp; SketchUp / JWcad / 建築応力計算ソフト</p>
+  </section>
+
+  <footer>
+    <p>&copy; 2012&ndash;2018 WATANABE SHIKINE &ensp; All rights reserved.</p>
+  </footer>
+
+</div>
+  <script>
+(function () {
+  var GENRES = [
+    { key: 'stage', label: '舞台美術' },
+    { key: 'mv',    label: 'MV / 映像美術' },
+    { key: 'arch',  label: '建築 / 構造設計' },
+    { key: 'other', label: 'その他' }
+  ];
+
+  var activeGenre = 'all';
+  var activeYears = new Set();
+
+  function detectGenre(li) {
+    if (li.querySelector('.t-stage')) return 'stage';
+    if (li.querySelector('.t-mv'))    return 'mv';
+    if (li.querySelector('.t-arch'))  return 'arch';
+    var t = li.textContent;
+    if (t.indexOf('舞台美術') !== -1) return 'stage';
+    if (/\bMV\b|映像美術/.test(t))    return 'mv';
+    if (/建築設計|構造設計|建築建設|建築構造|建築関係|建築教育/.test(t)) return 'arch';
+    return 'other';
   }
-}
 
-// ===== BUILD HTML =====
-function buildHTML() {
-  const issue   = document.getElementById('issue').value   || 'No.001';
-  const date    = document.getElementById('date').value    || '';
-  const signoff = document.getElementById('signoff').value || '';
-  const body    = document.getElementById('body-editor').value || '';
-  const bodyHTML = body.split(/\n\n+/).map(p =>
-    p.trim() ? `<p style="font-size:16px;line-height:1.9;color:#2a2a2a;margin:0 0 24px;font-family:Georgia,serif;">${p.replace(/\n/g,'<br>')}</p>` : ''
-  ).join('');
-  return `
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f0ede6;padding:40px 0;">
-<tr><td align="center">
-<table width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background-color:#faf9f5;">
-  <tr><td style="background-color:#1a1a1a;padding:40px 48px 32px;border-bottom:3px solid #c8b89a;">
-    <p style="font-size:11px;letter-spacing:0.35em;color:#c8b89a;text-transform:uppercase;margin:0 0 12px;font-family:Georgia,serif;">letters from karasu</p>
-    <h1 style="font-size:28px;color:#faf9f5;margin:0;font-weight:normal;font-family:Georgia,serif;letter-spacing:0.05em;">karasuletters</h1>
-    <p style="font-size:11px;letter-spacing:0.2em;color:#888;text-transform:uppercase;margin:16px 0 0;font-family:Georgia,serif;">${issue}</p>
-  </td></tr>
-  <tr><td style="background-color:#e8e2d8;padding:10px 48px;border-bottom:1px solid #d4ccc0;">
-    <p style="margin:0;font-size:11px;letter-spacing:0.15em;color:#888;font-family:Georgia,serif;text-transform:uppercase;">${date}</p>
-  </td></tr>
-  <tr><td style="padding:48px 48px 0;">${bodyHTML}</td></tr>
-  <tr><td style="padding:0 48px 48px;">
-    <p style="font-size:14px;color:#555;font-family:Georgia,serif;font-style:italic;margin:0;">with love,</p>
-    <p style="font-size:16px;color:#1a1a1a;font-family:Georgia,serif;margin:8px 0 0;letter-spacing:0.05em;">${signoff}</p>
-  </td></tr>
-  <tr><td style="background-color:#1a1a1a;padding:32px 48px;">
-    <p style="font-size:10px;letter-spacing:0.3em;color:#c8b89a;text-transform:uppercase;font-family:Georgia,serif;margin:0 0 16px;">karasuletters</p>
-    <p style="font-size:11px;color:#666;line-height:1.7;font-family:Georgia,serif;margin:0 0 8px;">このメールは購読を申し込まれた方にお送りしています。</p>
-    <p style="font-size:11px;color:#666;line-height:1.7;font-family:Georgia,serif;margin:8px 0 0;">
-      配信停止をご希望の方は <a href="mailto:weavingsound1024@gmail.com" style="color:#888;text-decoration:underline;">weavingsound1024@gmail.com</a> に空メールをお送りください。
-    </p>
-  </td></tr>
-</table>
-</td></tr>
-</table>`;
-}
-
-// ===== CLAUDE =====
-async function generateWithClaude() {
-  const prompt = document.getElementById('claude-prompt').value.trim();
-  if (!prompt) return;
-  const btn = document.getElementById('claude-gen-btn');
-  const status = document.getElementById('claude-status');
-  btn.disabled = true; status.textContent = '生成中...';
-  try {
-    const res  = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514', max_tokens: 1000,
-        system: 'あなたはメールマガジン「karasuletters」の編集アシスタントです。舞台美術家・建築家・美術作家として活動する渡辺志鬼根さんのメルマガの本文を書きます。文体は一人称・エッセイ調・ていねい語。改行は段落ごとに空行を入れてください。HTMLタグは使わないこと。',
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const data = await res.json();
-    document.getElementById('body-editor').value = data.content?.[0]?.text || '';
-    status.textContent = '✓ 生成しました。本文を確認・編集してください。';
-  } catch(e) { status.textContent = 'エラーが発生しました。もう一度お試しください。'; }
-  btn.disabled = false;
-}
-
-// ===== SEND =====
-async function sendMail() {
-  const subject = document.getElementById('subject').value.trim();
-  const body    = document.getElementById('body-editor').value.trim();
-  if (!subject) { setStatus('件名を入力してください', 'err'); return; }
-  if (!body)    { setStatus('本文を入力してください', 'err'); return; }
-  if (!confirm(`件名：${subject}\n\nGoogle Sheets の全読者にメールを送信します。よろしいですか？`)) return;
-  const btn = document.getElementById('send-btn');
-  btn.disabled = true; setStatus('送信中...', '');
-  try {
-    const data = await gasPost({ subject, html: buildHTML() });
-    if (data.ok) { setStatus(`✓ ${data.sent} 件のメールを送信しました！`, 'ok'); }
-    else         { setStatus(`エラー: ${data.error || '送信に失敗しました'}`, 'err'); }
-  } catch(e) { setStatus('通信エラーが発生しました。', 'err'); }
-  btn.disabled = false;
-}
-
-// ===== SCHEDULE =====
-async function scheduleMail() {
-  const subject    = document.getElementById('subject').value.trim();
-  const body       = document.getElementById('body-editor').value.trim();
-  const scheduleDt = document.getElementById('schedule-dt').value;
-  if (!subject)    { setStatus('件名を入力してください', 'err'); return; }
-  if (!body)       { setStatus('本文を入力してください', 'err'); return; }
-  if (!scheduleDt) { setStatus('配信予定日時を入力してください', 'err'); return; }
-  const scheduleDate = new Date(scheduleDt);
-  if (scheduleDate <= new Date()) { setStatus('配信日時は未来の日時を指定してください', 'err'); return; }
-  const dateStr = scheduleDate.toLocaleString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  if (!confirm(`件名：${subject}\n配信日時：${dateStr}\n\nこの日時に予約配信します。よろしいですか？`)) return;
-  const btn = document.getElementById('schedule-btn');
-  btn.disabled = true; setStatus('予約中...', '');
-  try {
-    const data = await gasPost({ action: 'schedule', subject, html: buildHTML(), scheduledAt: scheduleDate.toISOString() });
-    if (data.ok) {
-      setStatus(`✓ ${dateStr} に予約しました！`, 'ok');
-      document.getElementById('schedule-dt').value = '';
-      loadScheduleStatus();
-    } else { setStatus(`エラー: ${data.error || '予約に失敗しました'}`, 'err'); }
-  } catch(e) { setStatus('通信エラーが発生しました。', 'err'); }
-  btn.disabled = false;
-}
-
-// ===== DRAFT: SAVE =====
-async function saveDraftToDrive() {
-  const data = {
-    issue:    document.getElementById('issue').value,
-    subject:  document.getElementById('subject').value,
-    date:     document.getElementById('date').value,
-    signoff:  document.getElementById('signoff').value,
-    body:     document.getElementById('body-editor').value,
-    schedule: document.getElementById('schedule-dt').value,
-  };
-  const btn = document.querySelector('.mode-btn[onclick="saveDraftToDrive()"]');
-  btn.textContent = '保存中...';
-  try {
-    const result = await gasPost({ action: 'saveDraft', data });
-    if (result.ok) { btn.textContent = '✓ 保存'; setTimeout(() => btn.textContent = '保存', 2000); }
-    else           { btn.textContent = '保存'; alert('保存に失敗しました: ' + (result.error || '不明なエラー')); }
-  } catch(e) { btn.textContent = '保存'; alert('通信エラーが発生しました'); }
-}
-
-// ===== DRAFT: LIST =====
-async function showDraftList() {
-  document.getElementById('draft-modal').classList.add('open');
-  const listEl = document.getElementById('draft-list');
-  listEl.innerHTML = '<p class="draft-empty">読み込み中...</p>';
-  try {
-    const result = await gasPost({ action: 'listDrafts' });
-    if (result.ok && result.drafts.length > 0) {
-      renderDraftList(result.drafts);
-    } else {
-      listEl.innerHTML = '<p class="draft-empty">下書きはまだありません</p>';
-    }
-  } catch(e) { listEl.innerHTML = '<p class="draft-empty">読み込みに失敗しました</p>'; }
-}
-
-function renderDraftList(drafts) {
-  const listEl = document.getElementById('draft-list');
-  listEl.innerHTML = drafts.map(d => {
-    const issue   = d.name.replace('draft_', '').replace('.json', '');
-    const dateStr = new Date(d.updated).toLocaleString('ja-JP');
-    return `<div class="draft-item" id="draft-${escAttr(issue)}">
-      <div class="draft-item-info" onclick="loadDraftFromDrive('${escAttr(issue)}')">
-        <div class="draft-item-name">${escHtml(issue)}</div>
-        <div class="draft-item-date">${dateStr}</div>
-      </div>
-      <button class="draft-delete-btn" onclick="deleteDraft('${escAttr(issue)}', this)">削除</button>
-    </div>`;
-  }).join('');
-}
-
-// ===== DRAFT: DELETE =====
-async function deleteDraft(issue, btn) {
-  if (!confirm(`「${issue}」を削除しますか？この操作は取り消せません。`)) return;
-  btn.disabled = true; btn.textContent = '削除中...';
-  try {
-    const result = await gasPost({ action: 'deleteDraft', issue });
-    if (result.ok) {
-      document.getElementById('draft-' + issue)?.remove();
-      if (!document.querySelector('.draft-item')) {
-        document.getElementById('draft-list').innerHTML = '<p class="draft-empty">下書きはまだありません</p>';
+  function normalizeLists() {
+    var re = /^([u301c\d]+)[\su2002u2003u00a0 ]*/;
+    document.querySelectorAll('#timeline-view .work-list li').forEach(function (li) {
+      var monthSpan = document.createElement('span');
+      monthSpan.className = 'month';
+      var entrySpan = document.createElement('span');
+      entrySpan.className = 'entry';
+      while (li.firstChild) entrySpan.appendChild(li.firstChild);
+      var first = entrySpan.firstChild;
+      if (first && first.nodeType === 3) {
+        var m = first.textContent.match(re);
+        if (m) {
+          monthSpan.textContent = m[1];
+          first.textContent = first.textContent.slice(m[0].length);
+        }
       }
-    } else {
-      btn.disabled = false; btn.textContent = '削除';
-      alert('削除に失敗しました');
+      li.appendChild(monthSpan);
+      li.appendChild(entrySpan);
+    });
+  }
+
+  function initGenreData() {
+    document.querySelectorAll('#timeline-view .year-block .work-list li').forEach(function (li) {
+      if (li.textContent.trim()) li.setAttribute('data-genre', detectGenre(li));
+    });
+  }
+
+  function applyFilters() {
+    document.querySelectorAll('#timeline-view .year-block').forEach(function (block) {
+      var year = block.querySelector('h3').textContent.trim();
+      if (activeYears.size > 0 && !activeYears.has(year)) {
+        block.style.display = 'none';
+        return;
+      }
+      var items = block.querySelectorAll('.work-list li[data-genre]');
+      if (!items.length) {
+        block.style.display = activeGenre === 'all' ? '' : 'none';
+        return;
+      }
+      var visible = 0;
+      items.forEach(function (li) {
+        var show = activeGenre === 'all' || li.getAttribute('data-genre') === activeGenre;
+        li.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      block.style.display = visible ? '' : 'none';
+    });
+  }
+
+  function buildYearChips() {
+    var bar = document.createElement('div');
+    bar.className = 'filter-bar year-filter-bar';
+    document.querySelectorAll('#timeline-view .year-block').forEach(function (block) {
+      var year = block.querySelector('h3').textContent.trim();
+      var hasEntries = Array.from(block.querySelectorAll('.work-list li')).some(function (li) {
+        return li.textContent.trim();
+      });
+      if (!hasEntries) return;
+      var btn = document.createElement('button');
+      btn.className = 'filter-chip year-chip';
+      btn.setAttribute('data-year', year);
+      btn.textContent = year;
+      bar.appendChild(btn);
+    });
+    return bar;
+  }
+
+  function buildGenreView() {
+    var groups = { stage: [], mv: [], arch: [], other: [] };
+    document.querySelectorAll('#timeline-view .year-block').forEach(function (block) {
+      var year = block.querySelector('h3').textContent.trim();
+      block.querySelectorAll('.work-list li').forEach(function (li) {
+        if (!li.textContent.trim()) return;
+        groups[detectGenre(li)].push({ year: year, inner: li.innerHTML });
+      });
+    });
+    var html = '';
+    GENRES.forEach(function (g) {
+      var items = groups[g.key];
+      if (!items.length) return;
+      html += '<div class="genre-block"><h3>' + g.label + '</h3><ul class="work-list">';
+      items.forEach(function (item) {
+        html += '<li><span class="year-tag">' + item.year + '</span> ' + item.inner + '</li>';
+      });
+      html += '</ul></div>';
+    });
+    return html;
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var timelineEl = document.getElementById('timeline-view');
+    var genreEl    = document.getElementById('genre-view');
+    var built      = false;
+
+    normalizeLists();
+    initGenreData();
+
+    // year filter chips (dynamically built, multi-select)
+    var genreBar = document.querySelector('.filter-bar');
+    var yearBar = buildYearChips();
+    genreBar.parentNode.insertBefore(yearBar, genreBar.nextSibling);
+    yearBar.addEventListener('click', function (e) {
+      var chip = e.target.closest('.year-chip');
+      if (!chip) return;
+      var year = chip.getAttribute('data-year');
+      if (activeYears.has(year)) {
+        activeYears.delete(year);
+        chip.classList.remove('active');
+      } else {
+        activeYears.add(year);
+        chip.classList.add('active');
+      }
+      applyFilters();
+    });
+
+    // 年代順 / ジャンル別 toggle
+    document.querySelectorAll('.toggle-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.toggle-btn').forEach(function (b) {
+          b.classList.toggle('active', b === btn);
+        });
+        if (btn.getAttribute('data-view') === 'genre') {
+          if (!built) { genreEl.innerHTML = buildGenreView(); built = true; }
+          timelineEl.setAttribute('hidden', '');
+          genreEl.removeAttribute('hidden');
+        } else {
+          timelineEl.removeAttribute('hidden');
+          genreEl.setAttribute('hidden', '');
+        }
+      });
+    });
+
+    // genre filter chips (single-select)
+    document.querySelectorAll('.filter-chip:not(.year-chip)').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        document.querySelectorAll('.filter-chip:not(.year-chip)').forEach(function (c) {
+          c.classList.toggle('active', c === chip);
+        });
+        activeGenre = chip.getAttribute('data-filter');
+        applyFilters();
+      });
+    });
+
+    // newsletter form submit → 重複チェック → Googleフォームに登録
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbyieDzOkdfRhkqzWx51YnUC6Y-537NnTCfpDkCaXGNOLMYJTDzG36kBhgcllVQu1VV5tQ/exec';
+    var GFORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSe00Lt17T4iWXGUN0LpIW1eQZefDAlV2et_Emu3WZX9xchHjw/formResponse';
+
+    var nlForm = document.getElementById('nl-form');
+    if (nlForm) {
+      nlForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var name   = document.getElementById('nl-name').value.trim();
+        var email  = document.getElementById('nl-email').value.trim();
+        var btn    = document.getElementById('nl-btn');
+        var errEl  = document.getElementById('nl-error');
+
+        errEl.hidden = true;
+        btn.disabled = true;
+        btn.textContent = '確認中...';
+
+        try {
+          var res    = await fetch(GAS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'checkEmail', email: email })
+          });
+          var result = await res.json();
+
+          if (result.duplicate) {
+            errEl.textContent = 'このメールアドレスはすでに登録されています。';
+            errEl.hidden = false;
+            btn.disabled = false;
+            btn.textContent = '購読する';
+            return;
+          }
+
+          // 重複なし → Googleフォームに送信
+          var fd = new FormData();
+          fd.append('entry.967381420', name);
+          fd.append('entry.75757379',  email);
+          await fetch(GFORM_URL, { method: 'POST', body: fd, mode: 'no-cors' });
+
+          nlForm.style.display = 'none';
+          var thanks = document.getElementById('nl-thanks');
+          thanks.hidden = false;
+          requestAnimationFrame(function () { thanks.classList.add('visible'); });
+
+        } catch(err) {
+          errEl.textContent = '通信エラーが発生しました。もう一度お試しください。';
+          errEl.hidden = false;
+          btn.disabled = false;
+          btn.textContent = '購読する';
+        }
+      });
     }
-  } catch(e) { btn.disabled = false; btn.textContent = '削除'; alert('通信エラーが発生しました'); }
-}
 
-// ===== DRAFT: LOAD =====
-async function loadDraftFromDrive(issue) {
-  try {
-    const result = await gasPost({ action: 'loadDraft', issue });
-    if (result.ok) {
-      const d = result.data;
-      document.getElementById('issue').value       = d.issue    || '';
-      document.getElementById('subject').value     = d.subject  || '';
-      document.getElementById('date').value        = d.date     || '';
-      document.getElementById('signoff').value     = d.signoff  || '';
-      document.getElementById('body-editor').value = d.body     || '';
-      document.getElementById('schedule-dt').value = d.schedule || '';
-      closeDraftModal();
-      setStatus('✓ 下書きを読み込みました', 'ok');
-    }
-  } catch(e) { alert('読み込みに失敗しました'); }
-}
+    // hover preview tooltip
+    var tooltip = document.createElement('div');
+    tooltip.className = 'preview-tooltip';
+    var tooltipImg = document.createElement('img');
+    tooltip.appendChild(tooltipImg);
+    document.body.appendChild(tooltip);
 
-function closeDraftModal() { document.getElementById('draft-modal').classList.remove('open'); }
-
-function setStatus(msg, cls) {
-  const el = document.getElementById('send-status');
-  el.textContent = msg;
-  el.className = 'send-status ' + cls;
-}
-
-function escHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function escAttr(str) {
-  return String(str).replace(/'/g, "\\'");
-}
-
-// ===== INIT =====
-const now = new Date();
-document.getElementById('date').value = `${now.getFullYear()}年${now.getMonth()+1}月`;
-loadScheduleStatus();
-</script>
+    document.querySelectorAll('[data-preview]').forEach(function (el) {
+      el.addEventListener('mouseenter', function (e) {
+        var src = el.getAttribute('data-preview');
+        if (!src) return;
+        tooltipImg.src = src;
+        var rect = el.getBoundingClientRect();
+        var top  = rect.top - 141;
+        if (top < 8) top = rect.bottom + 8;
+        var left = rect.left;
+        if (left + 200 > window.innerWidth - 8) left = window.innerWidth - 208;
+        tooltip.style.top  = top  + 'px';
+        tooltip.style.left = left + 'px';
+        tooltip.classList.add('visible');
+      });
+      el.addEventListener('mouseleave', function () {
+        tooltip.classList.remove('visible');
+      });
+    });
+  });
+})();
+  </script>
 </body>
 </html>
