@@ -26,7 +26,6 @@ html, body {
   font-family: 'EB Garamond', Georgia, serif;
 }
 
-/* grain */
 body::before {
   content: '';
   position: fixed;
@@ -46,7 +45,6 @@ body::before {
   padding: 0 0 80px;
 }
 
-/* ===== HEADER ===== */
 .top-bar {
   display: flex;
   align-items: center;
@@ -60,10 +58,7 @@ body::before {
   color: var(--gold);
   text-transform: uppercase;
 }
-.top-mode {
-  display: flex;
-  gap: 4px;
-}
+.top-mode { display: flex; gap: 4px; }
 .mode-btn {
   font-family: 'EB Garamond', Georgia, serif;
   font-size: 10px;
@@ -76,13 +71,23 @@ body::before {
   cursor: pointer;
   transition: all 0.2s;
 }
-.mode-btn.active {
-  background: var(--cream);
-  color: var(--black);
-  border-color: var(--cream);
-}
+.mode-btn.active { background: var(--cream); color: var(--black); border-color: var(--cream); }
 
-/* ===== FIELDS ===== */
+/* ===== SCHEDULE BANNER ===== */
+.schedule-banner {
+  display: none;
+  margin: 20px 28px 0;
+  padding: 14px 18px;
+  border: 1px solid var(--gold);
+  background: rgba(200,184,154,0.07);
+  font-size: 13px;
+  color: var(--gold);
+  font-style: italic;
+  letter-spacing: 0.03em;
+}
+.schedule-banner.visible { display: block; }
+.schedule-banner strong { font-style: normal; font-weight: 500; }
+
 .fields {
   padding: 28px 28px 0;
   display: flex;
@@ -110,25 +115,12 @@ input[type="text"], input[type="datetime-local"], textarea {
   resize: none;
   -webkit-appearance: none;
 }
-input[type="text"]:focus, input[type="datetime-local"]:focus, textarea:focus {
-  border-color: var(--gold);
-}
-input[type="text"]::placeholder, textarea::placeholder {
-  color: #444440;
-}
+input[type="text"]:focus, input[type="datetime-local"]:focus, textarea:focus { border-color: var(--gold); }
+input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
 
-/* ===== CLAUDE PANEL ===== */
-.claude-panel {
-  padding: 28px 28px 0;
-}
-.claude-prompt-wrap {
-  display: flex;
-  gap: 8px;
-}
-.claude-prompt-wrap textarea {
-  flex: 1;
-  height: 80px;
-}
+.claude-panel { padding: 28px 28px 0; }
+.claude-prompt-wrap { display: flex; gap: 8px; }
+.claude-prompt-wrap textarea { flex: 1; height: 80px; }
 .claude-btn {
   font-family: 'EB Garamond', Georgia, serif;
   font-size: 11px;
@@ -154,17 +146,9 @@ input[type="text"]::placeholder, textarea::placeholder {
   font-style: italic;
 }
 
-/* ===== DIVIDER ===== */
-.divider {
-  margin: 28px 28px 0;
-  border: none;
-  border-top: 1px solid var(--border);
-}
+.divider { margin: 28px 28px 0; border: none; border-top: 1px solid var(--border); }
 
-/* ===== BODY EDITOR ===== */
-.body-wrap {
-  padding: 24px 28px 0;
-}
+.body-wrap { padding: 24px 28px 0; }
 #body-editor {
   width: 100%;
   min-height: 320px;
@@ -182,11 +166,7 @@ input[type="text"]::placeholder, textarea::placeholder {
 #body-editor:focus { border-color: var(--gold); }
 #body-editor::placeholder { color: #444440; }
 
-/* ===== PREVIEW ===== */
-#preview-wrap {
-  padding: 24px 28px 0;
-  display: none;
-}
+#preview-wrap { padding: 24px 28px 0; display: none; }
 .preview-frame {
   border: 1px solid var(--border);
   background: #f0ede6;
@@ -194,17 +174,11 @@ input[type="text"]::placeholder, textarea::placeholder {
   min-height: 400px;
   overflow: hidden;
 }
-#preview-inner {
-  width: 100%;
-  padding: 0;
-}
+#preview-inner { width: 100%; padding: 0; }
 
-/* ===== SEND BAR ===== */
 .send-bar {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 0; left: 0; right: 0;
   z-index: 10;
   background: var(--black2);
   border-top: 1px solid var(--border);
@@ -230,16 +204,10 @@ input[type="text"]::placeholder, textarea::placeholder {
 }
 .send-btn:hover { background: var(--gold); }
 .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.send-status {
-  font-size: 13px;
-  color: var(--mid);
-  font-style: italic;
-  flex: 1;
-}
+.send-status { font-size: 13px; color: var(--mid); font-style: italic; flex: 1; }
 .send-status.ok { color: #7ab87a; }
 .send-status.err { color: #c87a7a; }
 
-/* ===== DRAFT MODAL ===== */
 .modal-overlay {
   display: none;
   position: fixed;
@@ -290,59 +258,26 @@ input[type="text"]::placeholder, textarea::placeholder {
 }
 .draft-empty { font-size: 14px; color: var(--mid); font-style: italic; }
 
-/* ===== MOBILE ===== */
 @media (max-width: 600px) {
   .app { padding-bottom: 120px; }
-  .top-bar {
-    padding: 14px 16px;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
+  .top-bar { padding: 14px 16px; flex-wrap: wrap; gap: 8px; }
   .top-logo { font-size: 10px; letter-spacing: 0.2em; }
   .top-mode { gap: 3px; flex-wrap: wrap; }
-  .mode-btn {
-    font-size: 9px;
-    padding: 5px 10px;
-    letter-spacing: 0.12em;
-  }
+  .mode-btn { font-size: 9px; padding: 5px 10px; letter-spacing: 0.12em; }
+  .schedule-banner { margin: 16px 16px 0; font-size: 12px; }
   .fields { padding: 20px 16px 0; gap: 16px; }
   .claude-panel { padding: 20px 16px 0; }
   .body-wrap { padding: 18px 16px 0; }
   .divider { margin: 20px 16px 0; }
   #preview-wrap { padding: 18px 16px 0; }
-  input[type="text"],
-  input[type="datetime-local"],
-  textarea { font-size: 15px; padding: 10px 14px; }
+  input[type="text"], input[type="datetime-local"], textarea { font-size: 15px; padding: 10px 14px; }
   #body-editor { font-size: 16px; min-height: 240px; }
   .claude-prompt-wrap { flex-direction: column; }
   .claude-prompt-wrap textarea { height: 72px; }
-  .claude-btn {
-    width: 100%;
-    padding: 12px;
-    align-self: auto;
-  }
-  .send-bar {
-    padding: 10px 16px;
-    flex-wrap: wrap;
-    gap: 8px;
-    left: 0;
-    right: 0;
-    max-width: 100%;
-  }
-  .send-btn {
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    padding: 10px 14px;
-    flex: 1;
-    text-align: center;
-  }
-  .send-status {
-    font-size: 11px;
-    width: 100%;
-    flex: none;
-    text-align: center;
-    padding: 2px 0 4px;
-  }
+  .claude-btn { width: 100%; padding: 12px; align-self: auto; }
+  .send-bar { padding: 10px 16px; flex-wrap: wrap; gap: 8px; left: 0; right: 0; max-width: 100%; }
+  .send-btn { font-size: 10px; letter-spacing: 0.15em; padding: 10px 14px; flex: 1; text-align: center; }
+  .send-status { font-size: 11px; width: 100%; flex: none; text-align: center; padding: 2px 0 4px; }
   .modal { padding: 20px 18px; }
 }
 </style>
@@ -350,18 +285,21 @@ input[type="text"]::placeholder, textarea::placeholder {
 <body>
 <div class="app">
 
-  <!-- TOP BAR -->
   <div class="top-bar">
     <span class="top-logo">karasuletters — editor</span>
     <div class="top-mode">
       <button class="mode-btn active" id="btn-edit" onclick="setMode('edit')">編集</button>
       <button class="mode-btn" id="btn-preview" onclick="setMode('preview')">プレビュー</button>
-      <button class="mode-btn" onclick="saveDraftToDrive()" title="Google Driveに下書き保存">保存</button>
-      <button class="mode-btn" onclick="showDraftList()" title="下書き一覧">下書き</button>
+      <button class="mode-btn" onclick="saveDraftToDrive()">保存</button>
+      <button class="mode-btn" onclick="showDraftList()">下書き</button>
     </div>
   </div>
 
-  <!-- META FIELDS -->
+  <!-- 予約状況バナー -->
+  <div class="schedule-banner" id="schedule-banner">
+    <strong>予約中：</strong><span id="schedule-banner-text"></span>
+  </div>
+
   <div class="fields">
     <div>
       <label class="field-label">号数 / Issue</label>
@@ -387,7 +325,6 @@ input[type="text"]::placeholder, textarea::placeholder {
 
   <hr class="divider">
 
-  <!-- CLAUDE ASSIST -->
   <div class="claude-panel">
     <label class="field-label">Claude に原稿を書いてもらう</label>
     <div class="claude-prompt-wrap">
@@ -399,13 +336,11 @@ input[type="text"]::placeholder, textarea::placeholder {
 
   <hr class="divider">
 
-  <!-- BODY EDITOR -->
   <div class="body-wrap" id="edit-wrap">
     <label class="field-label">本文</label>
     <textarea id="body-editor" placeholder="ここに本文を書いてください。&#10;&#10;Claudeで生成した文章をそのまま使うか、自分で書き換えて仕上げてください。"></textarea>
   </div>
 
-  <!-- PREVIEW -->
   <div id="preview-wrap">
     <label class="field-label">プレビュー</label>
     <div class="preview-frame">
@@ -433,11 +368,38 @@ input[type="text"]::placeholder, textarea::placeholder {
 </div>
 
 <script>
-// ===== CONFIG =====
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyieDzOkdfRhkqzWx51YnUC6Y-537NnTCfpDkCaXGNOLMYJTDzG36kBhgcllVQu1VV5tQ/exec';
-
-// GAS への fetch は必ず text/plain を使う（application/json だと CORS でブロックされる）
+const GAS_URL     = 'https://script.google.com/macros/s/AKfycbyieDzOkdfRhkqzWx51YnUC6Y-537NnTCfpDkCaXGNOLMYJTDzG36kBhgcllVQu1VV5tQ/exec';
 const GAS_HEADERS = { 'Content-Type': 'text/plain' };
+
+// ===== 起動時に予約状況を取得 =====
+async function loadScheduleStatus() {
+  try {
+    const res    = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: GAS_HEADERS,
+      body: JSON.stringify({ action: 'getScheduleStatus' })
+    });
+    const result = await res.json();
+    if (result.ok && result.scheduled) {
+      showScheduleBanner(result.scheduled.subject, result.scheduled.scheduledAt);
+    }
+  } catch(e) {}
+}
+
+function showScheduleBanner(subject, scheduledAt) {
+  const banner  = document.getElementById('schedule-banner');
+  const text    = document.getElementById('schedule-banner-text');
+  const dateStr = new Date(scheduledAt).toLocaleString('ja-JP', {
+    year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+  text.textContent = `「${subject}」— ${dateStr} に配信予定`;
+  banner.classList.add('visible');
+}
+
+function hideScheduleBanner() {
+  document.getElementById('schedule-banner').classList.remove('visible');
+}
 
 // ===== MODE =====
 function setMode(mode) {
@@ -478,9 +440,7 @@ function buildHTML() {
   <tr><td style="background-color:#e8e2d8;padding:10px 48px;border-bottom:1px solid #d4ccc0;">
     <p style="margin:0;font-size:11px;letter-spacing:0.15em;color:#888;font-family:Georgia,serif;text-transform:uppercase;">${date}</p>
   </td></tr>
-  <tr><td style="padding:48px 48px 0;">
-    ${bodyHTML}
-  </td></tr>
+  <tr><td style="padding:48px 48px 0;">${bodyHTML}</td></tr>
   <tr><td style="padding:0 48px 48px;">
     <p style="font-size:14px;color:#555;font-family:Georgia,serif;font-style:italic;margin:0;">with love,</p>
     <p style="font-size:16px;color:#1a1a1a;font-family:Georgia,serif;margin:8px 0 0;letter-spacing:0.05em;">${signoff}</p>
@@ -489,7 +449,7 @@ function buildHTML() {
     <p style="font-size:10px;letter-spacing:0.3em;color:#c8b89a;text-transform:uppercase;font-family:Georgia,serif;margin:0 0 16px;">karasuletters</p>
     <p style="font-size:11px;color:#666;line-height:1.7;font-family:Georgia,serif;margin:0 0 8px;">このメールは購読を申し込まれた方にお送りしています。</p>
     <p style="font-size:11px;color:#666;line-height:1.7;font-family:Georgia,serif;margin:8px 0 0;">
-      配信停止をご希望の方は <a href="mailto:weavingsound1024@gmail.com" style="color:#888;text-decoration:underline;">weavingsound1024@gmail.com</a> に空メールをお送りください。自動的にリストから削除されます。
+      配信停止をご希望の方は <a href="mailto:weavingsound1024@gmail.com" style="color:#888;text-decoration:underline;">weavingsound1024@gmail.com</a> に空メールをお送りください。
     </p>
   </td></tr>
 </table>
@@ -505,7 +465,6 @@ async function generateWithClaude() {
   const status = document.getElementById('claude-status');
   btn.disabled = true;
   status.textContent = '生成中...';
-
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -518,8 +477,7 @@ async function generateWithClaude() {
       })
     });
     const data = await res.json();
-    const text = data.content?.[0]?.text || '';
-    document.getElementById('body-editor').value = text;
+    document.getElementById('body-editor').value = data.content?.[0]?.text || '';
     status.textContent = '✓ 生成しました。本文を確認・編集してください。';
   } catch(e) {
     status.textContent = 'エラーが発生しました。もう一度お試しください。';
@@ -527,26 +485,19 @@ async function generateWithClaude() {
   btn.disabled = false;
 }
 
-// ===== SEND VIA GAS =====
+// ===== SEND =====
 async function sendMail() {
   const subject = document.getElementById('subject').value.trim();
   const body    = document.getElementById('body-editor').value.trim();
   if (!subject) { setStatus('件名を入力してください', 'err'); return; }
   if (!body)    { setStatus('本文を入力してください', 'err'); return; }
-
-  const confirmed = confirm(`件名：${subject}\n\nGoogle Sheets の全読者にメールを送信します。よろしいですか？`);
-  if (!confirmed) return;
+  if (!confirm(`件名：${subject}\n\nGoogle Sheets の全読者にメールを送信します。よろしいですか？`)) return;
 
   const btn = document.getElementById('send-btn');
   btn.disabled = true;
   setStatus('送信中... しばらくお待ちください', '');
-
   try {
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: GAS_HEADERS,
-      body: JSON.stringify({ subject: subject, html: buildHTML() })
-    });
+    const res  = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ subject, html: buildHTML() }) });
     const data = await res.json();
     if (data.ok) {
       setStatus(`✓ ${data.sent} 件のメールを送信しました！`, 'ok');
@@ -554,17 +505,16 @@ async function sendMail() {
       setStatus(`エラー: ${data.error || '送信に失敗しました'}`, 'err');
     }
   } catch(e) {
-    setStatus('通信エラーが発生しました。GASのURLを確認してください。', 'err');
+    setStatus('通信エラーが発生しました。', 'err');
   }
   btn.disabled = false;
 }
 
-// ===== SCHEDULE MAIL =====
+// ===== SCHEDULE =====
 async function scheduleMail() {
   const subject    = document.getElementById('subject').value.trim();
   const body       = document.getElementById('body-editor').value.trim();
   const scheduleDt = document.getElementById('schedule-dt').value;
-
   if (!subject)    { setStatus('件名を入力してください', 'err'); return; }
   if (!body)       { setStatus('本文を入力してください', 'err'); return; }
   if (!scheduleDt) { setStatus('配信予定日時を入力してください', 'err'); return; }
@@ -572,32 +522,18 @@ async function scheduleMail() {
   const scheduleDate = new Date(scheduleDt);
   if (scheduleDate <= new Date()) { setStatus('配信日時は未来の日時を指定してください', 'err'); return; }
 
-  const dateStr = scheduleDate.toLocaleString('ja-JP', {
-    year: 'numeric', month: 'long', day: 'numeric',
-    hour: '2-digit', minute: '2-digit'
-  });
-
-  const confirmed = confirm(`件名：${subject}\n配信日時：${dateStr}\n\nこの日時に予約配信します。よろしいですか？`);
-  if (!confirmed) return;
+  const dateStr = scheduleDate.toLocaleString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  if (!confirm(`件名：${subject}\n配信日時：${dateStr}\n\nこの日時に予約配信します。よろしいですか？`)) return;
 
   const btn = document.getElementById('schedule-btn');
   btn.disabled = true;
   setStatus('予約中...', '');
-
   try {
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: GAS_HEADERS,
-      body: JSON.stringify({
-        action: 'schedule',
-        subject: subject,
-        html: buildHTML(),
-        scheduledAt: scheduleDate.toISOString()
-      })
-    });
+    const res  = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ action: 'schedule', subject, html: buildHTML(), scheduledAt: scheduleDate.toISOString() }) });
     const data = await res.json();
     if (data.ok) {
-      setStatus(`✓ ${dateStr} に予約しました！Googleカレンダーにも登録されました。`, 'ok');
+      setStatus(`✓ ${dateStr} に予約しました！`, 'ok');
+      showScheduleBanner(subject, scheduleDate.toISOString());
     } else {
       setStatus(`エラー: ${data.error || '予約に失敗しました'}`, 'err');
     }
@@ -607,25 +543,19 @@ async function scheduleMail() {
   btn.disabled = false;
 }
 
-// ===== CANCEL SCHEDULE =====
+// ===== CANCEL =====
 async function cancelSchedule() {
-  const confirmed = confirm('予約配信をキャンセルします。Googleカレンダーの予定も削除されます。よろしいですか？');
-  if (!confirmed) return;
-
+  if (!confirm('予約配信をキャンセルします。よろしいですか？')) return;
   const btn = document.getElementById('cancel-btn');
   btn.disabled = true;
   setStatus('キャンセル中...', '');
-
   try {
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: GAS_HEADERS,
-      body: JSON.stringify({ action: 'cancelSchedule' })
-    });
+    const res  = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ action: 'cancelSchedule' }) });
     const data = await res.json();
     if (data.ok) {
       document.getElementById('schedule-dt').value = '';
-      setStatus('✓ 予約をキャンセルしました。カレンダーの予定も削除されました。', 'ok');
+      hideScheduleBanner();
+      setStatus('✓ 予約をキャンセルしました。', 'ok');
     } else {
       setStatus('エラー: キャンセルに失敗しました', 'err');
     }
@@ -645,16 +575,10 @@ async function saveDraftToDrive() {
     body:     document.getElementById('body-editor').value,
     schedule: document.getElementById('schedule-dt').value,
   };
-
   const btn = document.querySelector('.mode-btn[onclick="saveDraftToDrive()"]');
   btn.textContent = '保存中...';
-
   try {
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: GAS_HEADERS,
-      body: JSON.stringify({ action: 'saveDraft', data: data })
-    });
+    const res    = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ action: 'saveDraft', data }) });
     const result = await res.json();
     if (result.ok) {
       btn.textContent = '✓ 保存';
@@ -674,13 +598,8 @@ async function showDraftList() {
   document.getElementById('draft-modal').classList.add('open');
   const listEl = document.getElementById('draft-list');
   listEl.innerHTML = '<p class="draft-empty">読み込み中...</p>';
-
   try {
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: GAS_HEADERS,
-      body: JSON.stringify({ action: 'listDrafts' })
-    });
+    const res    = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ action: 'listDrafts' }) });
     const result = await res.json();
     if (result.ok && result.drafts.length > 0) {
       listEl.innerHTML = result.drafts.map(d => {
@@ -702,11 +621,7 @@ async function showDraftList() {
 // ===== DRAFT: LOAD =====
 async function loadDraftFromDrive(issue) {
   try {
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: GAS_HEADERS,
-      body: JSON.stringify({ action: 'loadDraft', issue: issue })
-    });
+    const res    = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ action: 'loadDraft', issue }) });
     const result = await res.json();
     if (result.ok) {
       const d = result.data;
@@ -734,10 +649,10 @@ function setStatus(msg, cls) {
   el.className = 'send-status ' + cls;
 }
 
-// ===== INIT DATE =====
+// ===== INIT =====
 const now = new Date();
-document.getElementById('date').value =
-  `${now.getFullYear()}年${now.getMonth()+1}月`;
+document.getElementById('date').value = `${now.getFullYear()}年${now.getMonth()+1}月`;
+loadScheduleStatus();
 </script>
 </body>
 </html>
