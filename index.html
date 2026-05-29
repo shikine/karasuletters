@@ -291,12 +291,68 @@ input[type="text"]::placeholder, textarea::placeholder {
 .draft-empty { font-size: 14px; color: var(--mid); font-style: italic; }
 
 /* ===== MOBILE ===== */
-@media (max-width: 480px) {
-  .top-bar { padding: 18px 20px; }
-  .fields, .claude-panel, .body-wrap, .divider { padding-left: 20px; padding-right: 20px; }
-  #preview-wrap { padding-left: 20px; padding-right: 20px; }
-  .send-bar { padding: 14px 20px; }
-  .top-logo { font-size: 10px; }
+@media (max-width: 600px) {
+  /* layout */
+  .app { padding-bottom: 120px; }
+  .top-bar {
+    padding: 14px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .top-logo { font-size: 10px; letter-spacing: 0.2em; }
+  .top-mode { gap: 3px; flex-wrap: wrap; }
+  .mode-btn {
+    font-size: 9px;
+    padding: 5px 10px;
+    letter-spacing: 0.12em;
+  }
+
+  /* fields */
+  .fields { padding: 20px 16px 0; gap: 16px; }
+  .claude-panel { padding: 20px 16px 0; }
+  .body-wrap { padding: 18px 16px 0; }
+  .divider { margin: 20px 16px 0; }
+  #preview-wrap { padding: 18px 16px 0; }
+
+  /* inputs */
+  input[type="text"],
+  input[type="datetime-local"],
+  textarea { font-size: 15px; padding: 10px 14px; }
+  #body-editor { font-size: 16px; min-height: 240px; }
+  .claude-prompt-wrap { flex-direction: column; }
+  .claude-prompt-wrap textarea { height: 72px; }
+  .claude-btn {
+    width: 100%;
+    padding: 12px;
+    align-self: auto;
+  }
+
+  /* send bar — compact 2-row layout */
+  .send-bar {
+    padding: 10px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+    left: 0;
+    right: 0;
+    max-width: 100%;
+  }
+  .send-btn {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    padding: 10px 14px;
+    flex: 1;
+    text-align: center;
+  }
+  .send-status {
+    font-size: 11px;
+    width: 100%;
+    flex: none;
+    text-align: center;
+    padding: 2px 0 4px;
+  }
+
+  /* modal */
+  .modal { padding: 20px 18px; }
 }
 </style>
 </head>
