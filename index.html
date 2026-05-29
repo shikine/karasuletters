@@ -97,7 +97,7 @@ body::before {
   display: block;
   margin-bottom: 8px;
 }
-input[type="text"], textarea {
+input[type="text"], input[type="datetime-local"], textarea {
   width: 100%;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -110,7 +110,7 @@ input[type="text"], textarea {
   resize: none;
   -webkit-appearance: none;
 }
-input[type="text"]:focus, textarea:focus {
+input[type="text"]:focus, input[type="datetime-local"]:focus, textarea:focus {
   border-color: var(--gold);
 }
 input[type="text"]::placeholder, textarea::placeholder {
@@ -292,7 +292,6 @@ input[type="text"]::placeholder, textarea::placeholder {
 
 /* ===== MOBILE ===== */
 @media (max-width: 600px) {
-  /* layout */
   .app { padding-bottom: 120px; }
   .top-bar {
     padding: 14px 16px;
@@ -306,15 +305,11 @@ input[type="text"]::placeholder, textarea::placeholder {
     padding: 5px 10px;
     letter-spacing: 0.12em;
   }
-
-  /* fields */
   .fields { padding: 20px 16px 0; gap: 16px; }
   .claude-panel { padding: 20px 16px 0; }
   .body-wrap { padding: 18px 16px 0; }
   .divider { margin: 20px 16px 0; }
   #preview-wrap { padding: 18px 16px 0; }
-
-  /* inputs */
   input[type="text"],
   input[type="datetime-local"],
   textarea { font-size: 15px; padding: 10px 14px; }
@@ -326,8 +321,6 @@ input[type="text"]::placeholder, textarea::placeholder {
     padding: 12px;
     align-self: auto;
   }
-
-  /* send bar — compact 2-row layout */
   .send-bar {
     padding: 10px 16px;
     flex-wrap: wrap;
@@ -350,8 +343,6 @@ input[type="text"]::placeholder, textarea::placeholder {
     text-align: center;
     padding: 2px 0 4px;
   }
-
-  /* modal */
   .modal { padding: 20px 18px; }
 }
 </style>
@@ -444,6 +435,9 @@ input[type="text"]::placeholder, textarea::placeholder {
 <script>
 // ===== CONFIG =====
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyieDzOkdfRhkqzWx51YnUC6Y-537NnTCfpDkCaXGNOLMYJTDzG36kBhgcllVQu1VV5tQ/exec';
+
+// GAS への fetch は必ず text/plain を使う（application/json だと CORS でブロックされる）
+const GAS_HEADERS = { 'Content-Type': 'text/plain' };
 
 // ===== MODE =====
 function setMode(mode) {
@@ -547,14 +541,12 @@ async function sendMail() {
   btn.disabled = true;
   setStatus('送信中... しばらくお待ちください', '');
 
-  const htmlContent = buildHTML();
-
   try {
     const res = await fetch(GAS_URL, {
-  method: 'POST',
-  headers: { 'Content-Type': 'text/plain' },
-  body: JSON.stringify({ action: 'saveDraft', data })
-});
+      method: 'POST',
+      headers: GAS_HEADERS,
+      body: JSON.stringify({ subject: subject, html: buildHTML() })
+    });
     const data = await res.json();
     if (data.ok) {
       setStatus(`✓ ${data.sent} 件のメールを送信しました！`, 'ok');
@@ -563,6 +555,54 @@ async function sendMail() {
     }
   } catch(e) {
     setStatus('通信エラーが発生しました。GASのURLを確認してください。', 'err');
+  }
+  btn.disabled = false;
+}
+
+// ===== SCHEDULE MAIL =====
+async function scheduleMail() {
+  const subject    = document.getElementById('subject').value.trim();
+  const body       = document.getElementById('body-editor').value.trim();
+  const scheduleDt = document.getElementById('schedule-dt').value;
+
+  if (!subject)    { setStatus('件名を入力してください', 'err'); return; }
+  if (!body)       { setStatus('本文を入力してください', 'err'); return; }
+  if (!scheduleDt) { setStatus('配信予定日時を入力してください', 'err'); return; }
+
+  const scheduleDate = new Date(scheduleDt);
+  if (scheduleDate <= new Date()) { setStatus('配信日時は未来の日時を指定してください', 'err'); return; }
+
+  const dateStr = scheduleDate.toLocaleString('ja-JP', {
+    year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+
+  const confirmed = confirm(`件名：${subject}\n配信日時：${dateStr}\n\nこの日時に予約配信します。よろしいですか？`);
+  if (!confirmed) return;
+
+  const btn = document.getElementById('schedule-btn');
+  btn.disabled = true;
+  setStatus('予約中...', '');
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: GAS_HEADERS,
+      body: JSON.stringify({
+        action: 'schedule',
+        subject: subject,
+        html: buildHTML(),
+        scheduledAt: scheduleDate.toISOString()
+      })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      setStatus(`✓ ${dateStr} に予約しました！Googleカレンダーにも登録されました。`, 'ok');
+    } else {
+      setStatus(`エラー: ${data.error || '予約に失敗しました'}`, 'err');
+    }
+  } catch(e) {
+    setStatus('通信エラーが発生しました。', 'err');
   }
   btn.disabled = false;
 }
@@ -579,6 +619,7 @@ async function cancelSchedule() {
   try {
     const res = await fetch(GAS_URL, {
       method: 'POST',
+      headers: GAS_HEADERS,
       body: JSON.stringify({ action: 'cancelSchedule' })
     });
     const data = await res.json();
@@ -611,7 +652,8 @@ async function saveDraftToDrive() {
   try {
     const res = await fetch(GAS_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: 'saveDraft', data })
+      headers: GAS_HEADERS,
+      body: JSON.stringify({ action: 'saveDraft', data: data })
     });
     const result = await res.json();
     if (result.ok) {
@@ -619,7 +661,7 @@ async function saveDraftToDrive() {
       setTimeout(() => btn.textContent = '保存', 2000);
     } else {
       btn.textContent = '保存';
-      alert('保存に失敗しました');
+      alert('保存に失敗しました: ' + (result.error || '不明なエラー'));
     }
   } catch(e) {
     btn.textContent = '保存';
@@ -636,6 +678,7 @@ async function showDraftList() {
   try {
     const res = await fetch(GAS_URL, {
       method: 'POST',
+      headers: GAS_HEADERS,
       body: JSON.stringify({ action: 'listDrafts' })
     });
     const result = await res.json();
@@ -661,7 +704,8 @@ async function loadDraftFromDrive(issue) {
   try {
     const res = await fetch(GAS_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: 'loadDraft', issue })
+      headers: GAS_HEADERS,
+      body: JSON.stringify({ action: 'loadDraft', issue: issue })
     });
     const result = await res.json();
     if (result.ok) {
@@ -688,56 +732,6 @@ function setStatus(msg, cls) {
   const el = document.getElementById('send-status');
   el.textContent = msg;
   el.className = 'send-status ' + cls;
-}
-
-// ===== SCHEDULE MAIL =====
-async function scheduleMail() {
-  const subject    = document.getElementById('subject').value.trim();
-  const body       = document.getElementById('body-editor').value.trim();
-  const scheduleDt = document.getElementById('schedule-dt').value;
-
-  if (!subject)    { setStatus('件名を入力してください', 'err'); return; }
-  if (!body)       { setStatus('本文を入力してください', 'err'); return; }
-  if (!scheduleDt) { setStatus('配信予定日時を入力してください', 'err'); return; }
-
-  const scheduleDate = new Date(scheduleDt);
-  if (scheduleDate <= new Date()) { setStatus('配信日時は未来の日時を指定してください', 'err'); return; }
-
-  const dateStr = scheduleDate.toLocaleString('ja-JP', {
-    year: 'numeric', month: 'long', day: 'numeric',
-    hour: '2-digit', minute: '2-digit'
-  });
-
-  const confirmed = confirm(`件名：${subject}\n配信日時：${dateStr}\n\nこの日時に予約配信します。よろしいですか？`);
-  if (!confirmed) return;
-
-  const btn = document.getElementById('schedule-btn');
-  btn.disabled = true;
-  setStatus('予約中...', '');
-
-  const htmlContent = buildHTML();
-
-  try {
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'schedule',
-        subject: subject,
-        html: htmlContent,
-        scheduledAt: scheduleDate.toISOString()
-      })
-    });
-
-    const data = await res.json();
-    if (data.ok) {
-      setStatus(`✓ ${dateStr} に予約しました！Googleカレンダーにも登録されました。`, 'ok');
-    } else {
-      setStatus(`エラー: ${data.error || '予約に失敗しました'}`, 'err');
-    }
-  } catch(e) {
-    setStatus('通信エラーが発生しました。', 'err');
-  }
-  btn.disabled = false;
 }
 
 // ===== INIT DATE =====
