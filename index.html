@@ -89,6 +89,22 @@ body::before {
   cursor: pointer; transition: all 0.2s; flex-shrink: 0;
 }
 .schedule-cancel-btn:hover { background: #c87a7a; color: var(--black); }
+.schedule-preview-btn {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+  padding: 6px 12px; background: transparent;
+  border: 1px solid var(--gold); color: var(--gold);
+  cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+}
+.schedule-preview-btn:hover { background: var(--gold); color: var(--black); }
+
+/* ===== SCHEDULE PREVIEW MODAL ===== */
+.sched-preview-meta { font-size: 11px; color: var(--mid); font-style: italic; margin-bottom: 12px; }
+.sched-preview-frame {
+  border: 1px solid var(--border); background: #f0ede6;
+  width: 100%; overflow-y: auto; max-height: 52vh; margin: 4px 0 16px;
+}
+.sched-preview-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .fields { padding: 28px 28px 0; display: flex; flex-direction: column; gap: 20px; }
 .field-label { font-size: 10px; letter-spacing: 0.25em; color: var(--gold); text-transform: uppercase; display: block; margin-bottom: 8px; }
@@ -287,6 +303,23 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
   </div>
 </div>
 
+<!-- SCHEDULE PREVIEW MODAL -->
+<div class="modal-overlay" id="schedule-preview-modal">
+  <div class="modal" style="max-width:640px;max-height:88vh;">
+    <p class="modal-title" id="sched-preview-title"></p>
+    <p class="sched-preview-meta" id="sched-preview-date"></p>
+    <div class="sched-preview-frame">
+      <div id="sched-preview-inner"></div>
+    </div>
+    <div class="sched-preview-actions">
+      <button class="schedule-preview-btn" onclick="loadScheduleToEditor()">編集に読み込む</button>
+      <button class="schedule-preview-btn" onclick="saveScheduleAsDraft()">下書きに保存</button>
+      <button class="schedule-cancel-btn" onclick="cancelScheduleFromPreview()">予約をキャンセル</button>
+      <button class="modal-close" style="margin:0;flex:1;" onclick="closeSchedulePreview()">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <!-- SEND BAR -->
 <div class="send-bar">
   <button class="send-btn" id="send-btn" onclick="sendMail()">今すぐ配信</button>
@@ -297,6 +330,8 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
 <script>
 const GAS_URL     = 'https://script.google.com/macros/s/AKfycbyieDzOkdfRhkqzWx51YnUC6Y-537NnTCfpDkCaXGNOLMYJTDzG36kBhgcllVQu1VV5tQ/exec';
 const GAS_HEADERS = { 'Content-Type': 'text/plain' };
+const scheduleCache = {}; // id -> { subject, html, scheduledAt }
+let currentPreviewId = null;
 
 function gasPost(body) {
   return fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify(body) }).then(r => r.json());
@@ -313,20 +348,97 @@ async function loadScheduleStatus() {
 function renderScheduleList(schedules) {
   const wrap   = document.getElementById('schedule-list-wrap');
   const listEl = document.getElementById('schedule-list');
+  // キャッシュ更新
+  Object.keys(scheduleCache).forEach(k => delete scheduleCache[k]);
   if (!schedules || schedules.length === 0) { wrap.classList.remove('visible'); return; }
+  schedules.forEach(s => scheduleCache[s.id] = s);
   wrap.classList.add('visible');
   listEl.innerHTML = schedules.map(s => {
     const dateStr = new Date(s.scheduledAt).toLocaleString('ja-JP', {
       year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
     });
-    return `<div class="schedule-item" id="sched-${s.id}">
-      <div class="schedule-item-info">
+    return `<div class="schedule-item" id="sched-${escAttr(s.id)}">
+      <div class="schedule-item-info" onclick="openSchedulePreview('${escAttr(s.id)}')" style="cursor:pointer;">
         <div class="schedule-item-subject">${escHtml(s.subject)}</div>
         <div class="schedule-item-date">${dateStr}</div>
       </div>
-      <button class="schedule-cancel-btn" onclick="cancelScheduleById('${s.id}', this)">取消</button>
+      <button class="schedule-preview-btn" onclick="openSchedulePreview('${escAttr(s.id)}')">プレビュー</button>
+      <button class="schedule-cancel-btn" onclick="cancelScheduleById('${escAttr(s.id)}', this)">取消</button>
     </div>`;
   }).join('');
+}
+
+// ===== SCHEDULE PREVIEW =====
+function openSchedulePreview(id) {
+  const s = scheduleCache[id];
+  if (!s) return;
+  currentPreviewId = id;
+  const dateStr = new Date(s.scheduledAt).toLocaleString('ja-JP', {
+    year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+  document.getElementById('sched-preview-title').textContent = s.subject;
+  document.getElementById('sched-preview-date').textContent = '配信予定: ' + dateStr;
+  document.getElementById('sched-preview-inner').innerHTML = s.html;
+  document.getElementById('schedule-preview-modal').classList.add('open');
+}
+
+function closeSchedulePreview() {
+  document.getElementById('schedule-preview-modal').classList.remove('open');
+  currentPreviewId = null;
+}
+
+function loadScheduleToEditor() {
+  const s = scheduleCache[currentPreviewId];
+  if (!s) return;
+  document.getElementById('subject').value = s.subject;
+  const dt  = new Date(s.scheduledAt);
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('schedule-dt').value =
+    `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+  closeSchedulePreview();
+  setMode('edit');
+  setStatus('✓ 件名・配信予定日時を読み込みました。本文を編集してください。', 'ok');
+}
+
+async function saveScheduleAsDraft() {
+  const s = scheduleCache[currentPreviewId];
+  if (!s) return;
+  const issue = document.getElementById('issue').value || ('sched_' + currentPreviewId.slice(-6));
+  const data = {
+    issue,
+    subject:  s.subject,
+    date:     document.getElementById('date').value,
+    signoff:  document.getElementById('signoff').value,
+    body:     document.getElementById('body-editor').value,
+    schedule: document.getElementById('schedule-dt').value,
+  };
+  try {
+    const result = await gasPost({ action: 'saveDraft', data });
+    if (result.ok) {
+      closeSchedulePreview();
+      setStatus('✓ 下書きに保存しました（号数: ' + issue + '）', 'ok');
+    } else {
+      setStatus('エラー: 保存に失敗しました', 'err');
+    }
+  } catch(e) { setStatus('通信エラーが発生しました', 'err'); }
+}
+
+async function cancelScheduleFromPreview() {
+  if (!confirm('この予約をキャンセルしますか？')) return;
+  try {
+    const result = await gasPost({ action: 'cancelSchedule', id: currentPreviewId });
+    if (result.ok) {
+      document.getElementById('sched-' + currentPreviewId)?.remove();
+      if (!document.querySelector('.schedule-item')) {
+        document.getElementById('schedule-list-wrap').classList.remove('visible');
+      }
+      delete scheduleCache[currentPreviewId];
+      closeSchedulePreview();
+      setStatus('✓ 予約をキャンセルしました。', 'ok');
+    } else {
+      setStatus('エラー: キャンセルに失敗しました', 'err');
+    }
+  } catch(e) { setStatus('通信エラーが発生しました', 'err'); }
 }
 
 async function cancelScheduleById(id, btn) {
