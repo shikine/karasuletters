@@ -490,7 +490,7 @@ async function showDraftList() {
   listEl.innerHTML = '<p class="draft-empty">読み込み中...</p>';
   try {
     const result = await gasPost({ action: 'listDrafts' });
-    if (result.ok && result.drafts.length > 0) {
+    if (result.drafts && result.drafts.length > 0) {
       renderDraftList(result.drafts);
     } else {
       listEl.innerHTML = '<p class="draft-empty">下書きはまだありません</p>';
@@ -501,8 +501,8 @@ async function showDraftList() {
 function renderDraftList(drafts) {
   const listEl = document.getElementById('draft-list');
   listEl.innerHTML = drafts.map(d => {
-    const issue   = d.name.replace('draft_', '').replace('.json', '');
-    const dateStr = new Date(d.updated).toLocaleString('ja-JP');
+    const issue   = d.issue || '不明';
+    const dateStr = d.updated ? new Date(d.updated).toLocaleString('ja-JP') : '—';
     return `<div class="draft-item" id="draft-${escAttr(issue)}">
       <div class="draft-item-info" onclick="loadDraftFromDrive('${escAttr(issue)}')">
         <div class="draft-item-name">${escHtml(issue)}</div>
@@ -535,7 +535,7 @@ async function deleteDraft(issue, btn) {
 async function loadDraftFromDrive(issue) {
   try {
     const result = await gasPost({ action: 'loadDraft', issue });
-    if (result.ok) {
+    if (result.data) {
       const d = result.data;
       document.getElementById('issue').value       = d.issue    || '';
       document.getElementById('subject').value     = d.subject  || '';
