@@ -89,7 +89,6 @@ body::before {
   cursor: pointer; transition: all 0.2s; flex-shrink: 0;
 }
 .schedule-cancel-btn:hover { background: #c87a7a; color: var(--black); }
-.schedule-empty { font-size: 13px; color: var(--mid); font-style: italic; padding: 8px 0; }
 
 .fields { padding: 28px 28px 0; display: flex; flex-direction: column; gap: 20px; }
 .field-label { font-size: 10px; letter-spacing: 0.25em; color: var(--gold); text-transform: uppercase; display: block; margin-bottom: 8px; }
@@ -150,6 +149,7 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
 .send-status.ok { color: #7ab87a; }
 .send-status.err { color: #c87a7a; }
 
+/* ===== MODAL ===== */
 .modal-overlay {
   display: none; position: fixed; inset: 0;
   background: rgba(0,0,0,0.7); z-index: 100;
@@ -161,10 +161,22 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
   width: 90%; max-width: 420px; max-height: 70vh; overflow-y: auto; padding: 28px;
 }
 .modal-title { font-size: 11px; letter-spacing: 0.25em; color: var(--gold); text-transform: uppercase; margin-bottom: 20px; }
-.draft-item { padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: color 0.2s; }
-.draft-item:hover { color: var(--gold); }
-.draft-item-name { font-size: 15px; margin-bottom: 4px; }
+.draft-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.draft-item-info { flex: 1; min-width: 0; cursor: pointer; }
+.draft-item-info:hover .draft-item-name { color: var(--gold); }
+.draft-item-name { font-size: 15px; margin-bottom: 4px; transition: color 0.2s; }
 .draft-item-date { font-size: 11px; color: var(--mid); letter-spacing: 0.05em; }
+.draft-delete-btn {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+  padding: 5px 10px; background: transparent;
+  border: 1px solid #c87a7a; color: #c87a7a;
+  cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+}
+.draft-delete-btn:hover { background: #c87a7a; color: var(--black); }
 .modal-close {
   font-family: 'EB Garamond', Georgia, serif; font-size: 11px;
   letter-spacing: 0.2em; text-transform: uppercase; padding: 10px 20px;
@@ -212,7 +224,7 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
 
   <!-- 予約一覧 -->
   <div class="schedule-list-wrap" id="schedule-list-wrap">
-    <p class="schedule-list-title">配信予約一覧</p>
+    <p class="schedule-list-title" style="margin: 0 0 10px; font-size:10px; letter-spacing:0.25em; color:var(--gold); text-transform:uppercase;">配信予約一覧</p>
     <div id="schedule-list"></div>
   </div>
 
@@ -286,11 +298,14 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
 const GAS_URL     = 'https://script.google.com/macros/s/AKfycbyieDzOkdfRhkqzWx51YnUC6Y-537NnTCfpDkCaXGNOLMYJTDzG36kBhgcllVQu1VV5tQ/exec';
 const GAS_HEADERS = { 'Content-Type': 'text/plain' };
 
-// ===== 予約一覧の描画 =====
+function gasPost(body) {
+  return fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify(body) }).then(r => r.json());
+}
+
+// ===== 予約一覧 =====
 async function loadScheduleStatus() {
   try {
-    const res    = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ action: 'getScheduleStatus' }) });
-    const result = await res.json();
+    const result = await gasPost({ action: 'getScheduleStatus' });
     renderScheduleList(result.schedules || []);
   } catch(e) {}
 }
@@ -298,12 +313,7 @@ async function loadScheduleStatus() {
 function renderScheduleList(schedules) {
   const wrap   = document.getElementById('schedule-list-wrap');
   const listEl = document.getElementById('schedule-list');
-
-  if (!schedules || schedules.length === 0) {
-    wrap.classList.remove('visible');
-    return;
-  }
-
+  if (!schedules || schedules.length === 0) { wrap.classList.remove('visible'); return; }
   wrap.classList.add('visible');
   listEl.innerHTML = schedules.map(s => {
     const dateStr = new Date(s.scheduledAt).toLocaleString('ja-JP', {
@@ -321,32 +331,18 @@ function renderScheduleList(schedules) {
 
 async function cancelScheduleById(id, btn) {
   if (!confirm('この予約をキャンセルしますか？')) return;
-  btn.disabled = true;
-  btn.textContent = '取消中...';
+  btn.disabled = true; btn.textContent = '取消中...';
   try {
-    const res    = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ action: 'cancelSchedule', id }) });
-    const result = await res.json();
+    const result = await gasPost({ action: 'cancelSchedule', id });
     if (result.ok) {
       document.getElementById('sched-' + id)?.remove();
-      // 残りアイテムがなければセクションを隠す
-      if (!document.querySelector('.schedule-item')) {
-        document.getElementById('schedule-list-wrap').classList.remove('visible');
-      }
+      if (!document.querySelector('.schedule-item')) document.getElementById('schedule-list-wrap').classList.remove('visible');
       setStatus('✓ 予約をキャンセルしました。', 'ok');
     } else {
-      btn.disabled = false;
-      btn.textContent = '取消';
+      btn.disabled = false; btn.textContent = '取消';
       setStatus('エラー: キャンセルに失敗しました', 'err');
     }
-  } catch(e) {
-    btn.disabled = false;
-    btn.textContent = '取消';
-    setStatus('通信エラーが発生しました', 'err');
-  }
-}
-
-function escHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  } catch(e) { btn.disabled = false; btn.textContent = '取消'; setStatus('通信エラーが発生しました', 'err'); }
 }
 
 // ===== MODE =====
@@ -365,7 +361,7 @@ function setMode(mode) {
   }
 }
 
-// ===== BUILD HTML EMAIL =====
+// ===== BUILD HTML =====
 function buildHTML() {
   const issue   = document.getElementById('issue').value   || 'No.001';
   const date    = document.getElementById('date').value    || '';
@@ -407,14 +403,12 @@ function buildHTML() {
 async function generateWithClaude() {
   const prompt = document.getElementById('claude-prompt').value.trim();
   if (!prompt) return;
-  const btn    = document.getElementById('claude-gen-btn');
+  const btn = document.getElementById('claude-gen-btn');
   const status = document.getElementById('claude-status');
-  btn.disabled = true;
-  status.textContent = '生成中...';
+  btn.disabled = true; status.textContent = '生成中...';
   try {
     const res  = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514', max_tokens: 1000,
         system: 'あなたはメールマガジン「karasuletters」の編集アシスタントです。舞台美術家・建築家・美術作家として活動する渡辺志鬼根さんのメルマガの本文を書きます。文体は一人称・エッセイ調・ていねい語。改行は段落ごとに空行を入れてください。HTMLタグは使わないこと。',
@@ -424,9 +418,7 @@ async function generateWithClaude() {
     const data = await res.json();
     document.getElementById('body-editor').value = data.content?.[0]?.text || '';
     status.textContent = '✓ 生成しました。本文を確認・編集してください。';
-  } catch(e) {
-    status.textContent = 'エラーが発生しました。もう一度お試しください。';
-  }
+  } catch(e) { status.textContent = 'エラーが発生しました。もう一度お試しください。'; }
   btn.disabled = false;
 }
 
@@ -438,11 +430,9 @@ async function sendMail() {
   if (!body)    { setStatus('本文を入力してください', 'err'); return; }
   if (!confirm(`件名：${subject}\n\nGoogle Sheets の全読者にメールを送信します。よろしいですか？`)) return;
   const btn = document.getElementById('send-btn');
-  btn.disabled = true;
-  setStatus('送信中...', '');
+  btn.disabled = true; setStatus('送信中...', '');
   try {
-    const res  = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ subject, html: buildHTML() }) });
-    const data = await res.json();
+    const data = await gasPost({ subject, html: buildHTML() });
     if (data.ok) { setStatus(`✓ ${data.sent} 件のメールを送信しました！`, 'ok'); }
     else         { setStatus(`エラー: ${data.error || '送信に失敗しました'}`, 'err'); }
   } catch(e) { setStatus('通信エラーが発生しました。', 'err'); }
@@ -462,18 +452,14 @@ async function scheduleMail() {
   const dateStr = scheduleDate.toLocaleString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   if (!confirm(`件名：${subject}\n配信日時：${dateStr}\n\nこの日時に予約配信します。よろしいですか？`)) return;
   const btn = document.getElementById('schedule-btn');
-  btn.disabled = true;
-  setStatus('予約中...', '');
+  btn.disabled = true; setStatus('予約中...', '');
   try {
-    const res  = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ action: 'schedule', subject, html: buildHTML(), scheduledAt: scheduleDate.toISOString() }) });
-    const data = await res.json();
+    const data = await gasPost({ action: 'schedule', subject, html: buildHTML(), scheduledAt: scheduleDate.toISOString() });
     if (data.ok) {
       setStatus(`✓ ${dateStr} に予約しました！`, 'ok');
       document.getElementById('schedule-dt').value = '';
-      loadScheduleStatus(); // 一覧を再読み込み
-    } else {
-      setStatus(`エラー: ${data.error || '予約に失敗しました'}`, 'err');
-    }
+      loadScheduleStatus();
+    } else { setStatus(`エラー: ${data.error || '予約に失敗しました'}`, 'err'); }
   } catch(e) { setStatus('通信エラーが発生しました。', 'err'); }
   btn.disabled = false;
 }
@@ -491,8 +477,7 @@ async function saveDraftToDrive() {
   const btn = document.querySelector('.mode-btn[onclick="saveDraftToDrive()"]');
   btn.textContent = '保存中...';
   try {
-    const res    = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ action: 'saveDraft', data }) });
-    const result = await res.json();
+    const result = await gasPost({ action: 'saveDraft', data });
     if (result.ok) { btn.textContent = '✓ 保存'; setTimeout(() => btn.textContent = '保存', 2000); }
     else           { btn.textContent = '保存'; alert('保存に失敗しました: ' + (result.error || '不明なエラー')); }
   } catch(e) { btn.textContent = '保存'; alert('通信エラーが発生しました'); }
@@ -504,27 +489,52 @@ async function showDraftList() {
   const listEl = document.getElementById('draft-list');
   listEl.innerHTML = '<p class="draft-empty">読み込み中...</p>';
   try {
-    const res    = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ action: 'listDrafts' }) });
-    const result = await res.json();
+    const result = await gasPost({ action: 'listDrafts' });
     if (result.ok && result.drafts.length > 0) {
-      listEl.innerHTML = result.drafts.map(d => {
-        const issue = d.name.replace('draft_', '').replace('.json', '');
-        return `<div class="draft-item" onclick="loadDraftFromDrive('${issue}')">
-          <div class="draft-item-name">${issue}</div>
-          <div class="draft-item-date">${new Date(d.updated).toLocaleString('ja-JP')}</div>
-        </div>`;
-      }).join('');
+      renderDraftList(result.drafts);
     } else {
       listEl.innerHTML = '<p class="draft-empty">下書きはまだありません</p>';
     }
   } catch(e) { listEl.innerHTML = '<p class="draft-empty">読み込みに失敗しました</p>'; }
 }
 
+function renderDraftList(drafts) {
+  const listEl = document.getElementById('draft-list');
+  listEl.innerHTML = drafts.map(d => {
+    const issue   = d.name.replace('draft_', '').replace('.json', '');
+    const dateStr = new Date(d.updated).toLocaleString('ja-JP');
+    return `<div class="draft-item" id="draft-${escAttr(issue)}">
+      <div class="draft-item-info" onclick="loadDraftFromDrive('${escAttr(issue)}')">
+        <div class="draft-item-name">${escHtml(issue)}</div>
+        <div class="draft-item-date">${dateStr}</div>
+      </div>
+      <button class="draft-delete-btn" onclick="deleteDraft('${escAttr(issue)}', this)">削除</button>
+    </div>`;
+  }).join('');
+}
+
+// ===== DRAFT: DELETE =====
+async function deleteDraft(issue, btn) {
+  if (!confirm(`「${issue}」を削除しますか？この操作は取り消せません。`)) return;
+  btn.disabled = true; btn.textContent = '削除中...';
+  try {
+    const result = await gasPost({ action: 'deleteDraft', issue });
+    if (result.ok) {
+      document.getElementById('draft-' + issue)?.remove();
+      if (!document.querySelector('.draft-item')) {
+        document.getElementById('draft-list').innerHTML = '<p class="draft-empty">下書きはまだありません</p>';
+      }
+    } else {
+      btn.disabled = false; btn.textContent = '削除';
+      alert('削除に失敗しました');
+    }
+  } catch(e) { btn.disabled = false; btn.textContent = '削除'; alert('通信エラーが発生しました'); }
+}
+
 // ===== DRAFT: LOAD =====
 async function loadDraftFromDrive(issue) {
   try {
-    const res    = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ action: 'loadDraft', issue }) });
-    const result = await res.json();
+    const result = await gasPost({ action: 'loadDraft', issue });
     if (result.ok) {
       const d = result.data;
       document.getElementById('issue').value       = d.issue    || '';
@@ -545,6 +555,13 @@ function setStatus(msg, cls) {
   const el = document.getElementById('send-status');
   el.textContent = msg;
   el.className = 'send-status ' + cls;
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(str) {
+  return String(str).replace(/'/g, "\\'");
 }
 
 // ===== INIT =====
