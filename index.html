@@ -276,6 +276,10 @@ input[type="text"]::placeholder, textarea::placeholder {
       <input type="text" id="date" placeholder="2026年6月">
     </div>
     <div>
+      <label class="field-label">配信予定日時 / Schedule</label>
+      <input type="datetime-local" id="schedule-dt" style="color-scheme:dark;">
+    </div>
+    <div>
       <label class="field-label">署名 / Sign-off</label>
       <input type="text" id="signoff" placeholder="Shikine Watanabe" value="Shikine Watanabe">
     </div>
@@ -313,8 +317,9 @@ input[type="text"]::placeholder, textarea::placeholder {
 
 <!-- SEND BAR -->
 <div class="send-bar">
-  <button class="send-btn" id="send-btn" onclick="sendMail()">Gmail で一斉配信</button>
-  <span class="send-status" id="send-status">Google Sheets の読者リストに一斉配信します</span>
+  <button class="send-btn" id="send-btn" onclick="sendMail()">今すぐ配信</button>
+  <button class="send-btn" id="schedule-btn" onclick="scheduleMail()" style="background:transparent;border:1px solid var(--gold);color:var(--gold);">予約配信</button>
+  <span class="send-status" id="send-status">配信日時を設定して予約するか、今すぐ配信できます</span>
 </div>
 
 <script>
@@ -450,6 +455,56 @@ function setStatus(msg, cls) {
   const el = document.getElementById('send-status');
   el.textContent = msg;
   el.className = 'send-status ' + cls;
+}
+
+// ===== SCHEDULE MAIL =====
+async function scheduleMail() {
+  const subject    = document.getElementById('subject').value.trim();
+  const body       = document.getElementById('body-editor').value.trim();
+  const scheduleDt = document.getElementById('schedule-dt').value;
+
+  if (!subject)    { setStatus('件名を入力してください', 'err'); return; }
+  if (!body)       { setStatus('本文を入力してください', 'err'); return; }
+  if (!scheduleDt) { setStatus('配信予定日時を入力してください', 'err'); return; }
+
+  const scheduleDate = new Date(scheduleDt);
+  if (scheduleDate <= new Date()) { setStatus('配信日時は未来の日時を指定してください', 'err'); return; }
+
+  const dateStr = scheduleDate.toLocaleString('ja-JP', {
+    year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+
+  const confirmed = confirm(`件名：${subject}\n配信日時：${dateStr}\n\nこの日時に予約配信します。よろしいですか？`);
+  if (!confirmed) return;
+
+  const btn = document.getElementById('schedule-btn');
+  btn.disabled = true;
+  setStatus('予約中...', '');
+
+  const htmlContent = buildHTML();
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'schedule',
+        subject: subject,
+        html: htmlContent,
+        scheduledAt: scheduleDate.toISOString()
+      })
+    });
+
+    const data = await res.json();
+    if (data.ok) {
+      setStatus(`✓ ${dateStr} に予約しました！Googleカレンダーにも登録されました。`, 'ok');
+    } else {
+      setStatus(`エラー: ${data.error || '予約に失敗しました'}`, 'err');
+    }
+  } catch(e) {
+    setStatus('通信エラーが発生しました。', 'err');
+  }
+  btn.disabled = false;
 }
 
 // ===== INIT DATE =====
