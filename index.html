@@ -165,6 +165,24 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
 .send-status.ok { color: #7ab87a; }
 .send-status.err { color: #c87a7a; }
 
+/* ===== TOAST ===== */
+#schedule-toast {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: #1e2e1e; border: 1px solid #7ab87a; border-radius: 10px;
+  padding: 16px 24px; min-width: 280px; max-width: 480px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 300; text-align: center;
+}
+#schedule-toast.show {
+  opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto;
+}
+#schedule-toast .toast-icon { font-size: 28px; margin-bottom: 6px; }
+#schedule-toast .toast-title { font-size: 14px; color: #7ab87a; letter-spacing: 0.05em; margin-bottom: 4px; }
+#schedule-toast .toast-body  { font-size: 13px; color: var(--fg); line-height: 1.6; }
+#schedule-toast .toast-cal   { font-size: 11px; color: var(--mid); margin-top: 6px; }
+
 /* ===== MODAL ===== */
 .modal-overlay {
   display: none; position: fixed; inset: 0;
@@ -324,6 +342,14 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
       <button class="modal-close" style="margin:0;flex:1;" onclick="closeSchedulePreview()">閉じる</button>
     </div>
   </div>
+</div>
+
+<!-- SCHEDULE TOAST -->
+<div id="schedule-toast">
+  <div class="toast-icon">📅</div>
+  <div class="toast-title">予約配信が完了しました</div>
+  <div class="toast-body" id="toast-body"></div>
+  <div class="toast-cal" id="toast-cal"></div>
 </div>
 
 <!-- SEND BAR -->
@@ -617,7 +643,8 @@ async function scheduleMail() {
   try {
     const data = await gasPost({ action: 'schedule', subject, html: buildHTML(), scheduledAt: scheduleDate.toISOString() });
     if (data.ok) {
-      setStatus(`✓ ${dateStr} に予約しました！`, 'ok');
+      setStatus(`✓ ${dateStr} に予約しました`, 'ok');
+      showScheduleToast(subject, dateStr, true);
       document.getElementById('schedule-dt').value = '';
       loadScheduleStatus();
     } else { setStatus(`エラー: ${data.error || '予約に失敗しました'}`, 'err'); }
@@ -711,6 +738,17 @@ async function loadDraftFromDrive(issue) {
 }
 
 function closeDraftModal() { document.getElementById('draft-modal').classList.remove('open'); }
+
+let toastTimer = null;
+function showScheduleToast(subject, dateStr, hasCalendar) {
+  document.getElementById('toast-body').textContent = `「${subject}」\n${dateStr}`;
+  document.getElementById('toast-cal').textContent = hasCalendar ? '📆 Google カレンダーに追加しました' : '';
+  const el = document.getElementById('schedule-toast');
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 6000);
+  el.onclick = () => el.classList.remove('show');
+}
 
 function setStatus(msg, cls) {
   const el = document.getElementById('send-status');
