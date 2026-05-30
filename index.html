@@ -455,10 +455,10 @@ async function submitReschedule() {
       setStatus('✓ 配信日時を変更しました', 'ok');
       loadScheduleStatus();
     } else {
-      setStatus('⚠ 更新に失敗しました', 'error');
+      setStatus('⚠ 更新に失敗しました: ' + (res.error || '不明なエラー'), 'err');
     }
   } catch(e) {
-    setStatus('⚠ 通信エラー', 'error');
+    setStatus('⚠ 通信エラー', 'err');
   }
 }
 
@@ -644,7 +644,7 @@ async function scheduleMail() {
     const data = await gasPost({ action: 'schedule', subject, html: buildHTML(), scheduledAt: scheduleDate.toISOString() });
     if (data.ok) {
       setStatus(`✓ ${dateStr} に予約しました`, 'ok');
-      showScheduleToast(subject, dateStr, true);
+      showScheduleToast(subject, dateStr, data.calendarAdded === true);
       document.getElementById('schedule-dt').value = '';
       loadScheduleStatus();
     } else { setStatus(`エラー: ${data.error || '予約に失敗しました'}`, 'err'); }
