@@ -233,7 +233,7 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
     <div class="top-mode">
       <button class="mode-btn active" id="btn-edit" onclick="setMode('edit')">編集</button>
       <button class="mode-btn" id="btn-preview" onclick="setMode('preview')">プレビュー</button>
-      <button class="mode-btn" onclick="saveDraftToDrive()">保存</button>
+      <button class="mode-btn" id="save-draft-btn" onclick="saveDraftToDrive()">保存</button>
       <button class="mode-btn" onclick="showDraftList()">下書き</button>
     </div>
   </div>
@@ -328,7 +328,7 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
 </div>
 
 <script>
-const GAS_URL     = 'https://script.google.com/macros/s/AKfycbyieDzOkdfRhkqzWx51YnUC6Y-537NnTCfpDkCaXGNOLMYJTDzG36kBhgcllVQu1VV5tQ/exec';
+const GAS_URL     = 'https://script.google.com/macros/s/AKfycbwd3ZU_L6HOXh96vU5HiFvFp_5Oo8nLdRqE2gqxRSShnYaYs-T6TQOOc-7PDRDgw9etUQ/exec';
 const GAS_HEADERS = { 'Content-Type': 'text/plain' };
 const scheduleCache = {}; // id -> { subject, html, scheduledAt }
 let currentPreviewId = null;
@@ -586,7 +586,7 @@ async function saveDraftToDrive() {
     body:     document.getElementById('body-editor').value,
     schedule: document.getElementById('schedule-dt').value,
   };
-  const btn = document.querySelector('.mode-btn[onclick="saveDraftToDrive()"]');
+  const btn = document.getElementById('save-draft-btn');
   btn.textContent = '保存中...';
   try {
     const result = await gasPost({ action: 'saveDraft', data });
