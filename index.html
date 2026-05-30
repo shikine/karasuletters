@@ -311,8 +311,14 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
     <div class="sched-preview-frame">
       <div id="sched-preview-inner"></div>
     </div>
+    <div id="reschedule-area" style="display:none;padding:8px 0 4px;display:none;">
+      <input type="datetime-local" id="reschedule-dt" style="font-size:13px;padding:4px 8px;border:1px solid var(--gold);background:#1a1a1a;color:var(--fg);border-radius:4px;">
+      <button class="schedule-preview-btn" onclick="submitReschedule()" style="margin-left:6px;">変更を保存</button>
+      <button class="modal-close" style="margin:0 0 0 4px;padding:4px 10px;" onclick="closeRescheduleArea()">閉じる</button>
+    </div>
     <div class="sched-preview-actions">
       <button class="schedule-preview-btn" onclick="loadScheduleToEditor()">編集に読み込む</button>
+      <button class="schedule-preview-btn" onclick="openRescheduleArea()">日時を変更</button>
       <button class="schedule-preview-btn" onclick="saveScheduleAsDraft()">下書きに保存</button>
       <button class="schedule-cancel-btn" onclick="cancelScheduleFromPreview()">予約をキャンセル</button>
       <button class="modal-close" style="margin:0;flex:1;" onclick="closeSchedulePreview()">閉じる</button>
@@ -385,6 +391,49 @@ function openSchedulePreview(id) {
 function closeSchedulePreview() {
   document.getElementById('schedule-preview-modal').classList.remove('open');
   currentPreviewId = null;
+  closeRescheduleArea();
+}
+
+function openRescheduleArea() {
+  const s = scheduleCache[currentPreviewId];
+  if (!s) return;
+  const area = document.getElementById('reschedule-area');
+  const dt = new Date(s.scheduledAt);
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('reschedule-dt').value =
+    `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+  area.style.display = 'flex';
+  area.style.alignItems = 'center';
+  area.style.flexWrap = 'wrap';
+  area.style.gap = '4px';
+}
+
+function closeRescheduleArea() {
+  document.getElementById('reschedule-area').style.display = 'none';
+}
+
+async function submitReschedule() {
+  const id = currentPreviewId;
+  const newDt = document.getElementById('reschedule-dt').value;
+  if (!id || !newDt) return;
+  setStatus('カレンダー更新中…', '');
+  try {
+    const res = await gasPost({ action: 'updateSchedule', id, scheduledAt: new Date(newDt).toISOString() });
+    if (res.ok) {
+      scheduleCache[id].scheduledAt = new Date(newDt).toISOString();
+      const dateStr = new Date(newDt).toLocaleString('ja-JP', {
+        year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+      document.getElementById('sched-preview-date').textContent = '配信予定: ' + dateStr;
+      closeRescheduleArea();
+      setStatus('✓ 配信日時を変更しました', 'ok');
+      loadScheduleStatus();
+    } else {
+      setStatus('⚠ 更新に失敗しました', 'error');
+    }
+  } catch(e) {
+    setStatus('⚠ 通信エラー', 'error');
+  }
 }
 
 function loadScheduleToEditor() {
