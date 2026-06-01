@@ -84,7 +84,6 @@ function handleSchedule(subject, html, scheduledAt) {
 function handleGetSchedules() {
   var props = PropertiesService.getScriptProperties();
   var all   = props.getProperties();
-  var cal   = CalendarApp.getCalendarById(CALENDAR_ID);
   var list  = [];
 
   Object.keys(all).forEach(function(key) {
@@ -94,13 +93,9 @@ function handleGetSchedules() {
       v.id  = key;
 
       // カレンダーイベントが削除されていたら予約も自動取り消し
-      if (v.calEventId && cal) {
-        var ev = null;
-        try { ev = cal.getEventById(v.calEventId); } catch(e) {}
-        if (!ev) {
-          props.deleteProperty(key);
-          return; // 一覧に含めない
-        }
+      if (v.calEventId && !calendarEventExists(v.calEventId)) {
+        props.deleteProperty(key);
+        return; // 一覧に含めない
       }
 
       list.push(v);
@@ -186,16 +181,7 @@ function onCalendarEventUpdated() {
       if (!v.calEventId) return;
 
       // カレンダーイベントの存在確認
-      var cal     = CalendarApp.getCalendarById(CALENDAR_ID);
-      var exists  = false;
-      if (cal) {
-        try {
-          var ev = cal.getEventById(v.calEventId);
-          exists = !!ev;
-        } catch(e) { exists = false; }
-      }
-
-      if (!exists) {
+      if (!calendarEventExists(v.calEventId)) {
         Logger.log('Calendar event deleted → cancel schedule: ' + key);
         props.deleteProperty(key);
         changed = true;
@@ -204,6 +190,29 @@ function onCalendarEventUpdated() {
   });
 
   if (changed) Logger.log('onCalendarEventUpdated: cancelled orphaned schedules');
+}
+
+// ===== カレンダーイベント存在確認 (REST API — SDK キャッシュを迂回) =====
+// cal.getEventById() はSDKがキャッシュするため削除直後でも true を返すことがある
+// REST API で showDeleted=false を指定することで確実に削除済みを検知する
+function calendarEventExists(calEventId) {
+  try {
+    var url = 'https://www.googleapis.com/calendar/v3/calendars/'
+              + encodeURIComponent(CALENDAR_ID)
+              + '/events?iCalUID='
+              + encodeURIComponent(calEventId)
+              + '&showDeleted=false';
+    var res = UrlFetchApp.fetch(url, {
+      muteHttpExceptions: true,
+      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }
+    });
+    if (res.getResponseCode() !== 200) return true; // エラー時は念のため存在扱い
+    var data = JSON.parse(res.getContentText());
+    return !!(data.items && data.items.length > 0);
+  } catch(e) {
+    Logger.log('calendarEventExists error: ' + e.message);
+    return true; // エラー時は念のため存在扱い
+  }
 }
 
 // ===== カレンダーイベント削除ヘルパー =====
