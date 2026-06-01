@@ -1,290 +1,385 @@
-// ============================================================
-// karasuletters — Google Apps Script backend
-// ============================================================
-// デプロイ設定:
-//   実行ユーザー: 自分
-//   アクセス: 全員
+// karasuletters — Google Apps Script (完全版)
+// デプロイ設定: ウェブアプリ → 全員がアクセス可能
 //
-// 必要なトリガー設定 (トリガーページから手動で追加):
-//   1. checkAndSendScheduledPosts — 時間ベース、毎分
-//   2. onCalendarEventUpdated     — カレンダーから、カレンダーの更新時
-//      ※ カレンダー削除で予約が自動取り消しされる
-//
-// スクリプトプロパティに必要な値:
-//   SUBSCRIBERS_SHEET_ID — 読者リストのスプレッドシートID
-// ============================================================
+// ★ 必要なトリガー設定 (GASエディタ > トリガーページから手動で追加):
+//   1. checkAndSendScheduled    — 時間主導型、毎10分
+//   2. onCalendarEventUpdated   — カレンダーから、カレンダーの更新時
+//      ↑ これを設定するとカレンダー側の削除が予約取り消しに反映される
 
-const SCHEDULE_KEY        = 'schedules_v2';
-const SUBSCRIBERS_SHEET   = 'subscribers';
-const DRAFT_FOLDER_NAME   = 'karasuletters_drafts';
+var NOTIFY_EMAIL  = 'watanabeshikine@gmail.com';
+var UNSUB_EMAIL   = 'watanabeshikine@gmail.com';
+var SHEET_NAME    = 'フォームの回答 1';
+var UNSUB_LABEL   = 'karasuletters-unsubscribed';
+var DRAFT_FOLDER  = 'karasuletters_drafts';
+var CALENDAR_ID   = 'urj4s4v32702jrsemq4aope5d0@group.calendar.google.com';
 
-// ===== エントリーポイント =====
+// ===== ウェブアプリエントリーポイント =====
 function doPost(e) {
-  try {
-    const body   = JSON.parse(e.postData.contents);
-    const action = body.action;
+  var data   = JSON.parse(e.postData.contents);
+  var action = data.action;
 
-    if (!action) return sendMailToAll(body);
+  // actionなし + subject/html あり → 即時送信
+  if (!action && data.subject && data.html) return handleSend(data.subject, data.html);
 
-    switch (action) {
-      case 'schedule':          return handleSchedule(body);
-      case 'getScheduleStatus': return handleGetScheduleStatus();
-      case 'cancelSchedule':    return handleCancelSchedule(body.id);
-      case 'updateSchedule':    return handleUpdateSchedule(body.id, body.scheduledAt);
-      case 'saveDraft':         return handleSaveDraft(body.data);
-      case 'listDrafts':        return handleListDrafts();
-      case 'loadDraft':         return handleLoadDraft(body.issue);
-      case 'deleteDraft':       return handleDeleteDraft(body.issue);
-      default:
-        return jsonRes({ ok: false, error: 'Unknown action: ' + action });
-    }
-  } catch (err) {
-    Logger.log('doPost error: ' + err.message);
-    return jsonRes({ ok: false, error: err.message });
-  }
+  if (action === 'register')          return handleRegister(data.name, data.email);
+  if (action === 'checkEmail')        return respond({ duplicate: isDuplicate(data.email) });
+  if (action === 'schedule')          return handleSchedule(data.subject, data.html, data.scheduledAt);
+  if (action === 'getScheduleStatus') return handleGetSchedules();
+  if (action === 'cancelSchedule')    return handleCancelSchedule(data.id);
+  if (action === 'updateSchedule')    return handleUpdateSchedule(data.id, data.subject, data.scheduledAt);
+  if (action === 'saveDraft')         return handleSaveDraft(data.data);
+  if (action === 'listDrafts')        return handleListDrafts();
+  if (action === 'loadDraft')         return handleLoadDraft(data.issue);
+  if (action === 'deleteDraft')       return handleDeleteDraft(data.issue);
+
+  return respond({ error: 'unknown action' });
 }
 
-function jsonRes(obj) {
-  return ContentService
-    .createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
+function doGet(e) {
+  return respond({ status: 'ok' });
 }
 
 // ===== 即時送信 =====
-function sendMailToAll(body) {
-  const rows  = getSubscriberRows();
-  let sent    = 0;
-  for (let i = 1; i < rows.length; i++) {
-    const email = rows[i][0];
-    if (email && String(email).includes('@')) {
-      GmailApp.sendEmail(email, body.subject, '', { htmlBody: body.html });
-      sent++;
-    }
-  }
-  return jsonRes({ ok: true, sent });
+function handleSend(subject, html) {
+  var subscribers = getSubscribers();
+  subscribers.forEach(function(row) {
+    var name  = row[1] || '';
+    var email = row[2];
+    if (!email) return;
+    GmailApp.sendEmail(email, subject, '', {
+      htmlBody: html,
+      name: 'karasuletters'
+    });
+  });
+  return respond({ ok: true, sent: subscribers.length });
 }
 
-// ===== 予約作成 =====
-function handleSchedule(body) {
-  const props     = PropertiesService.getScriptProperties();
-  const schedules = loadSchedules(props);
-  const id        = Utilities.getUuid();
+// ===== スケジュール管理 =====
+function handleSchedule(subject, html, scheduledAt) {
+  var props = PropertiesService.getScriptProperties();
+  var id    = 'sched_' + new Date().getTime();
+  props.setProperty(id, JSON.stringify({ subject: subject, html: html, scheduledAt: scheduledAt }));
+  ensureScheduleTrigger();
 
-  let calEventId = null;
+  // Google カレンダーにイベントを登録
   try {
-    const start = new Date(body.scheduledAt);
-    const end   = new Date(start.getTime() + 30 * 60 * 1000);
-    const ev    = CalendarApp.getDefaultCalendar().createEvent(
-      '[karasuletters] ' + body.subject, start, end,
-      { description: 'karasuletters 予約投稿\nID: ' + id }
-    );
-    calEventId = ev.getId();
-  } catch (calErr) {
-    Logger.log('Calendar create error: ' + calErr.message);
-  }
-
-  schedules[id] = {
-    id,
-    subject:     body.subject,
-    html:        body.html,
-    scheduledAt: body.scheduledAt,
-    calEventId:  calEventId
-  };
-  saveSchedules(props, schedules);
-
-  return jsonRes({ ok: true, id, hasCalendar: !!calEventId });
-}
-
-// ===== 予約一覧取得 =====
-function handleGetScheduleStatus() {
-  const schedules = loadSchedules(PropertiesService.getScriptProperties());
-  const list = Object.values(schedules)
-    .map(s => ({ id: s.id, subject: s.subject, scheduledAt: s.scheduledAt, html: s.html }))
-    .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
-  return jsonRes({ ok: true, schedules: list });
-}
-
-// ===== 予約取り消し（カレンダーイベントも削除） =====
-function handleCancelSchedule(id) {
-  const props     = PropertiesService.getScriptProperties();
-  const schedules = loadSchedules(props);
-  const schedule  = schedules[id];
-
-  if (!schedule) {
-    return jsonRes({ ok: false, error: 'Schedule not found: ' + id });
-  }
-
-  // Google カレンダーのイベントを削除
-  if (schedule.calEventId) {
-    deleteCalEvent(schedule.calEventId);
-  }
-
-  delete schedules[id];
-  saveSchedules(props, schedules);
-  return jsonRes({ ok: true });
-}
-
-// ===== 予約日時変更（カレンダーイベントも更新） =====
-function handleUpdateSchedule(id, scheduledAt) {
-  const props     = PropertiesService.getScriptProperties();
-  const schedules = loadSchedules(props);
-  const schedule  = schedules[id];
-
-  if (!schedule) {
-    return jsonRes({ ok: false, error: 'Schedule not found: ' + id });
-  }
-
-  if (schedule.calEventId) {
-    try {
-      const ev = CalendarApp.getEventById(schedule.calEventId);
-      if (ev) {
-        const start = new Date(scheduledAt);
-        const end   = new Date(start.getTime() + 30 * 60 * 1000);
-        ev.setTime(start, end);
+    var sendDate = new Date(scheduledAt);
+    var endDate  = new Date(sendDate.getTime() + 30 * 60 * 1000);
+    var cal = CalendarApp.getCalendarById(CALENDAR_ID);
+    if (cal) {
+      var event = cal.createEvent('[karasuletters]予約配信: ' + subject, sendDate, endDate,
+        { description: '件名: ' + subject + '\n配信ID: ' + id });
+      if (event) {
+        var stored = JSON.parse(props.getProperty(id));
+        stored.calEventId = event.getId();
+        props.setProperty(id, JSON.stringify(stored));
       }
-    } catch (calErr) {
-      Logger.log('Calendar update error: ' + calErr.message);
     }
-  }
+  } catch(e) { Logger.log('handleSchedule calendar error: ' + e.message); }
 
-  schedules[id].scheduledAt = scheduledAt;
-  saveSchedules(props, schedules);
-  return jsonRes({ ok: true });
+  return respond({ ok: true, id: id });
+}
+
+function handleGetSchedules() {
+  var props = PropertiesService.getScriptProperties().getProperties();
+  var list  = [];
+  Object.keys(props).forEach(function(key) {
+    if (key.indexOf('sched_') === 0) {
+      try {
+        var v = JSON.parse(props[key]);
+        v.id  = key;
+        list.push(v);
+      } catch(e) {}
+    }
+  });
+  return respond({ schedules: list });
+}
+
+// ===== 予約取り消し — カレンダーイベントも削除 =====
+// 修正: CalendarApp.getEventById() → cal.getEventById() で特定カレンダーを指定
+function handleCancelSchedule(id) {
+  var props = PropertiesService.getScriptProperties();
+  try {
+    var stored = JSON.parse(props.getProperty(id) || '{}');
+    if (stored.calEventId) {
+      deleteCalendarEvent(stored.calEventId);
+    }
+  } catch(e) { Logger.log('handleCancelSchedule error: ' + e.message); }
+  props.deleteProperty(id);
+  return respond({ ok: true });
+}
+
+// ===== 日時変更 — カレンダーイベントも更新 =====
+// 修正: CalendarApp.getEventById() → cal.getEventById() で特定カレンダーを指定
+function handleUpdateSchedule(id, subject, scheduledAt) {
+  var props  = PropertiesService.getScriptProperties();
+  var stored = JSON.parse(props.getProperty(id) || '{}');
+  if (subject)     stored.subject     = subject;
+  if (scheduledAt) stored.scheduledAt = scheduledAt;
+  props.setProperty(id, JSON.stringify(stored));
+  try {
+    if (stored.calEventId) {
+      var cal = CalendarApp.getCalendarById(CALENDAR_ID);
+      if (cal) {
+        var ev = cal.getEventById(stored.calEventId);
+        if (ev) {
+          var sendDate = new Date(stored.scheduledAt);
+          var endDate  = new Date(sendDate.getTime() + 30 * 60 * 1000);
+          ev.setTime(sendDate, endDate);
+          ev.setTitle('[karasuletters]予約配信: ' + stored.subject);
+        }
+      }
+    }
+  } catch(e) { Logger.log('handleUpdateSchedule calendar error: ' + e.message); }
+  return respond({ ok: true });
+}
+
+// ===== 時間トリガー: 予約時刻にメール送信 + カレンダー削除 =====
+function checkAndSendScheduled() {
+  var now   = new Date().getTime();
+  var props = PropertiesService.getScriptProperties();
+  var all   = props.getProperties();
+  Object.keys(all).forEach(function(key) {
+    if (key.indexOf('sched_') !== 0) return;
+    try {
+      var v = JSON.parse(all[key]);
+      if (new Date(v.scheduledAt).getTime() <= now) {
+        handleSend(v.subject, v.html);
+        // 送信後にカレンダーイベントも削除
+        if (v.calEventId) deleteCalendarEvent(v.calEventId);
+        props.deleteProperty(key);
+      }
+    } catch(e) { Logger.log('checkAndSendScheduled error: ' + e.message); }
+  });
 }
 
 // ===== カレンダートリガー: カレンダー側の削除を予約に反映 =====
-// トリガー設定: イベントソース「カレンダーから」→「カレンダーの更新時」
+// このトリガーを有効にするには:
+// GASエディタ > トリガー > トリガーを追加
+//   関数: onCalendarEventUpdated
+//   イベントのソース: カレンダーから
+//   イベントの種類: カレンダーの更新時
 function onCalendarEventUpdated() {
-  const props     = PropertiesService.getScriptProperties();
-  const schedules = loadSchedules(props);
-  let changed     = false;
+  var props   = PropertiesService.getScriptProperties();
+  var all     = props.getProperties();
+  var changed = false;
 
-  for (const id in schedules) {
-    const calEventId = schedules[id].calEventId;
-    if (!calEventId) continue;
-
-    let exists = false;
+  Object.keys(all).forEach(function(key) {
+    if (key.indexOf('sched_') !== 0) return;
     try {
-      const ev = CalendarApp.getEventById(calEventId);
-      exists = !!ev;
-    } catch (err) {
-      exists = false;
-    }
+      var v = JSON.parse(all[key]);
+      if (!v.calEventId) return;
 
-    if (!exists) {
-      Logger.log('Calendar event deleted → cancel schedule: ' + id);
-      delete schedules[id];
-      changed = true;
-    }
-  }
-
-  if (changed) saveSchedules(props, schedules);
-}
-
-// ===== 時間トリガー: 予約時刻になったらメール送信 =====
-// トリガー設定: 時間ベース → 毎分
-function checkAndSendScheduledPosts() {
-  const props     = PropertiesService.getScriptProperties();
-  const schedules = loadSchedules(props);
-  const now       = new Date();
-
-  for (const id in schedules) {
-    const s = schedules[id];
-    if (new Date(s.scheduledAt) > now) continue;
-
-    try {
-      const rows = getSubscriberRows();
-      for (let i = 1; i < rows.length; i++) {
-        const email = rows[i][0];
-        if (email && String(email).includes('@')) {
-          GmailApp.sendEmail(email, s.subject, '', { htmlBody: s.html });
-        }
+      // カレンダーイベントの存在確認
+      var cal     = CalendarApp.getCalendarById(CALENDAR_ID);
+      var exists  = false;
+      if (cal) {
+        try {
+          var ev = cal.getEventById(v.calEventId);
+          exists = !!ev;
+        } catch(e) { exists = false; }
       }
-      if (s.calEventId) deleteCalEvent(s.calEventId);
-      delete schedules[id];
-      saveSchedules(props, schedules);
-      Logger.log('Sent scheduled post: ' + s.subject);
-    } catch (err) {
-      Logger.log('Failed to send ' + id + ': ' + err.message);
-    }
-  }
+
+      if (!exists) {
+        Logger.log('Calendar event deleted → cancel schedule: ' + key);
+        props.deleteProperty(key);
+        changed = true;
+      }
+    } catch(e) { Logger.log('onCalendarEventUpdated error for ' + key + ': ' + e.message); }
+  });
+
+  if (changed) Logger.log('onCalendarEventUpdated: cancelled orphaned schedules');
 }
 
-// ===== 下書き =====
-function handleSaveDraft(data) {
-  const folder   = getDraftFolder();
-  const filename = 'draft_' + (data.issue || 'unknown') + '.json';
-  const content  = JSON.stringify({ ...data, updated: new Date().toISOString() });
-  const iter     = folder.getFilesByName(filename);
-
-  if (iter.hasNext()) {
-    iter.next().setContent(content);
-  } else {
-    folder.createFile(filename, content, MimeType.PLAIN_TEXT);
-  }
-  return jsonRes({ ok: true });
-}
-
-function handleListDrafts() {
-  const iter   = getDraftFolder().getFiles();
-  const drafts = [];
-  while (iter.hasNext()) {
-    const f = iter.next();
-    if (!f.getName().endsWith('.json')) continue;
-    try {
-      const d = JSON.parse(f.getBlob().getDataAsString());
-      drafts.push({ issue: d.issue, updated: d.updated });
-    } catch (e) {}
-  }
-  drafts.sort((a, b) => new Date(b.updated || 0) - new Date(a.updated || 0));
-  return jsonRes({ ok: true, drafts });
-}
-
-function handleLoadDraft(issue) {
-  const iter = getDraftFolder().getFilesByName('draft_' + issue + '.json');
-  if (!iter.hasNext()) return jsonRes({ ok: false, error: 'Draft not found' });
-  const data = JSON.parse(iter.next().getBlob().getDataAsString());
-  return jsonRes({ ok: true, data });
-}
-
-function handleDeleteDraft(issue) {
-  const iter = getDraftFolder().getFilesByName('draft_' + issue + '.json');
-  if (!iter.hasNext()) return jsonRes({ ok: false, error: 'Draft not found' });
-  iter.next().setTrashed(true);
-  return jsonRes({ ok: true });
-}
-
-// ===== ユーティリティ =====
-function loadSchedules(props) {
-  const raw = props.getProperty(SCHEDULE_KEY);
-  return raw ? JSON.parse(raw) : {};
-}
-
-function saveSchedules(props, schedules) {
-  props.setProperty(SCHEDULE_KEY, JSON.stringify(schedules));
-}
-
-function deleteCalEvent(calEventId) {
+// ===== カレンダーイベント削除ヘルパー =====
+function deleteCalendarEvent(calEventId) {
   try {
-    const ev = CalendarApp.getEventById(calEventId);
+    var cal = CalendarApp.getCalendarById(CALENDAR_ID);
+    if (!cal) return;
+    var ev = cal.getEventById(calEventId);
     if (ev) {
       ev.deleteEvent();
       Logger.log('Deleted calendar event: ' + calEventId);
     }
-  } catch (err) {
-    Logger.log('deleteCalEvent error (' + calEventId + '): ' + err.message);
+  } catch(e) { Logger.log('deleteCalendarEvent error (' + calEventId + '): ' + e.message); }
+}
+
+// ===== トリガー自動生成 =====
+function ensureScheduleTrigger() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'checkAndSendScheduled') return;
+  }
+  ScriptApp.newTrigger('checkAndSendScheduled').timeBased().everyMinutes(10).create();
+}
+
+// ===== トリガー初期設定（手動実行） =====
+function setupTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    var fn = t.getHandlerFunction();
+    if (fn === 'processUnsubscribeEmails' || fn === 'checkAndSendScheduled') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  ScriptApp.newTrigger('processUnsubscribeEmails').timeBased().everyHours(1).create();
+  ScriptApp.newTrigger('checkAndSendScheduled').timeBased().everyMinutes(10).create();
+}
+
+// ===== 下書き CRUD (Google Drive) =====
+function getDraftFolder() {
+  var folders = DriveApp.getFoldersByName(DRAFT_FOLDER);
+  if (folders.hasNext()) return folders.next();
+  return DriveApp.createFolder(DRAFT_FOLDER);
+}
+
+function handleSaveDraft(data) {
+  var folder  = getDraftFolder();
+  var issue   = data.issue;
+  data.updated = new Date().toISOString();
+  var files   = folder.getFilesByName(issue + '.json');
+  var content = JSON.stringify(data);
+  if (files.hasNext()) {
+    files.next().setContent(content);
+  } else {
+    folder.createFile(issue + '.json', content, MimeType.PLAIN_TEXT);
+  }
+  return respond({ ok: true });
+}
+
+function handleListDrafts() {
+  var folder = getDraftFolder();
+  var files  = folder.getFiles();
+  var list   = [];
+  while (files.hasNext()) {
+    var f = files.next();
+    if (f.getName().match(/\.json$/)) {
+      try { list.push(JSON.parse(f.getBlob().getDataAsString())); } catch(e) {}
+    }
+  }
+  return respond({ drafts: list });
+}
+
+function handleLoadDraft(issue) {
+  var folder = getDraftFolder();
+  var files  = folder.getFilesByName(issue + '.json');
+  if (!files.hasNext()) return respond({ error: 'not found' });
+  try {
+    return respond({ data: JSON.parse(files.next().getBlob().getDataAsString()) });
+  } catch(e) {
+    return respond({ error: 'parse error' });
   }
 }
 
-function getDraftFolder() {
-  const iter = DriveApp.getFoldersByName(DRAFT_FOLDER_NAME);
-  return iter.hasNext() ? iter.next() : DriveApp.createFolder(DRAFT_FOLDER_NAME);
+function handleDeleteDraft(issue) {
+  var folder = getDraftFolder();
+  var files  = folder.getFilesByName(issue + '.json');
+  if (files.hasNext()) files.next().setTrashed(true);
+  return respond({ ok: true });
 }
 
-function getSubscriberRows() {
-  const sheetId = PropertiesService.getScriptProperties().getProperty('SUBSCRIBERS_SHEET_ID');
-  return SpreadsheetApp.openById(sheetId)
-    .getSheetByName(SUBSCRIBERS_SHEET)
-    .getDataRange()
-    .getValues();
+// ===== 購読者管理 =====
+function handleRegister(name, email) {
+  if (isDuplicate(email)) {
+    return respond({ duplicate: true });
+  }
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_NAME);
+  sheet.appendRow([new Date(), name, email]);
+
+  // 運営者への通知メール
+  MailApp.sendEmail({
+    to:      NOTIFY_EMAIL,
+    subject: '【karasuletters】新しい読者登録がありました',
+    body:    '新しい読者登録がありました。\n\nお名前: ' + name + '\nメール: ' + email + '\n\n登録日時: ' + new Date().toLocaleString('ja-JP')
+  });
+
+  // 登録者へのサンクスメール
+  MailApp.sendEmail({
+    to:      email,
+    subject: '【karasuletters】登録ありがとうございます',
+    body:    name + ' さま\n\nkarasuletters へようこそ。\n\n読者登録ありがとうございます。\n毎回一通、手紙のように丁寧に、そんなことをお届けしたいと思っています。\n\nどうかお楽しみに。\n\nwith love,\nShikine Watanabe\n—\n配信停止をご希望の方は ' + UNSUB_EMAIL + ' に空メールをお送りください。'
+  });
+
+  return respond({ ok: true });
+}
+
+// ===== 配信停止メール処理（受信トレイで自動処理） =====
+function processUnsubscribeEmails() {
+  var label = GmailApp.getUserLabelByName(UNSUB_LABEL);
+  if (!label) label = GmailApp.createLabel(UNSUB_LABEL);
+
+  var threads = GmailApp.search('is:unread in:inbox');
+
+  threads.forEach(function(thread) {
+    var messages = thread.getMessages();
+    var lastMsg  = messages[messages.length - 1];
+    var body     = lastMsg.getPlainBody().trim();
+    var from     = lastMsg.getFrom();
+
+    var isUnsubRequest = body === '' ||
+      /(配信停止|unsubscribe|配信解除|登録解除)$/i.test(body);
+
+    if (!isUnsubRequest) return;
+
+    var emailMatch  = from.match(/<(.+?)>/) || [null, from];
+    var senderEmail = emailMatch[1].trim().toLowerCase();
+
+    var removed = removeSubscriber(senderEmail);
+
+    if (removed) {
+      MailApp.sendEmail({
+        to:      senderEmail,
+        subject: '【karasuletters】配信停止が完了しました',
+        body:    'karasuletters の配信停止が完了しました。\n\n配信リストのメール: ' + senderEmail + '\n\nまたいつかお会いしましょう。 https://shikine.github.io/ から再購読いただけます。\n\nShikine Watanabe'
+      });
+
+      MailApp.sendEmail({
+        to:      NOTIFY_EMAIL,
+        subject: '【karasuletters】配信停止がありました',
+        body:    '配信停止のリクエストを処理しました。\n\nメール: ' + senderEmail + '\n\n実施日時: ' + new Date().toLocaleString('ja-JP')
+      });
+    }
+
+    thread.addLabel(label);
+    thread.markRead();
+    thread.moveToArchive();
+  });
+}
+
+// ===== ユーティリティ =====
+function getSubscribers() {
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_NAME);
+  var data  = sheet.getDataRange().getValues();
+  return data.slice(1); // ヘッダー行を除く
+}
+
+function isDuplicate(email) {
+  var lower = email.toLowerCase();
+  var rows  = getSubscribers();
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][2]).toLowerCase() === lower) return true;
+  }
+  return false;
+}
+
+function removeSubscriber(email) {
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_NAME);
+  var data  = sheet.getDataRange().getValues();
+  var lower = email.toLowerCase();
+
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (String(data[i][2]).toLowerCase() === lower) {
+      sheet.deleteRow(i + 1);
+      return true;
+    }
+  }
+  return false;
+}
+
+function respond(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }
