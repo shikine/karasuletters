@@ -80,18 +80,33 @@ function handleSchedule(subject, html, scheduledAt) {
   return respond({ ok: true, id: id });
 }
 
+// カレンダーイベントの存在もチェックし、削除済みなら予約も自動取り消し
 function handleGetSchedules() {
-  var props = PropertiesService.getScriptProperties().getProperties();
+  var props = PropertiesService.getScriptProperties();
+  var all   = props.getProperties();
+  var cal   = CalendarApp.getCalendarById(CALENDAR_ID);
   var list  = [];
-  Object.keys(props).forEach(function(key) {
-    if (key.indexOf('sched_') === 0) {
-      try {
-        var v = JSON.parse(props[key]);
-        v.id  = key;
-        list.push(v);
-      } catch(e) {}
-    }
+
+  Object.keys(all).forEach(function(key) {
+    if (key.indexOf('sched_') !== 0) return;
+    try {
+      var v = JSON.parse(all[key]);
+      v.id  = key;
+
+      // カレンダーイベントが削除されていたら予約も自動取り消し
+      if (v.calEventId && cal) {
+        var ev = null;
+        try { ev = cal.getEventById(v.calEventId); } catch(e) {}
+        if (!ev) {
+          props.deleteProperty(key);
+          return; // 一覧に含めない
+        }
+      }
+
+      list.push(v);
+    } catch(e) {}
   });
+
   return respond({ schedules: list });
 }
 
