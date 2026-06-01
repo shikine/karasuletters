@@ -257,40 +257,52 @@ function getDraftFolder() {
 }
 
 function handleSaveDraft(data) {
-  var folder  = getDraftFolder();
-  var issue   = data.issue;
-  data.updated = new Date().toISOString();
-  var files   = folder.getFilesByName(issue + '.json');
-  var content = JSON.stringify(data);
-  if (files.hasNext()) {
-    files.next().setContent(content);
-  } else {
-    folder.createFile(issue + '.json', content, MimeType.PLAIN_TEXT);
+  try {
+    if (!data || !data.issue) return respond({ error: 'issue が空です' });
+    var folder  = getDraftFolder();
+    var issue   = data.issue;
+    data.updated = new Date().toISOString();
+    var content = JSON.stringify(data);
+    var files   = folder.getFilesByName(issue + '.json');
+    if (files.hasNext()) {
+      files.next().setContent(content);
+    } else {
+      folder.createFile(issue + '.json', content, MimeType.PLAIN_TEXT);
+    }
+    return respond({ ok: true });
+  } catch(e) {
+    Logger.log('handleSaveDraft error: ' + e.message);
+    return respond({ error: e.message });
   }
-  return respond({ ok: true });
 }
 
 function handleListDrafts() {
-  var folder = getDraftFolder();
-  var files  = folder.getFiles();
-  var list   = [];
-  while (files.hasNext()) {
-    var f = files.next();
-    if (f.getName().match(/\.json$/)) {
-      try { list.push(JSON.parse(f.getBlob().getDataAsString())); } catch(e) {}
+  try {
+    var folder = getDraftFolder();
+    var files  = folder.getFiles();
+    var list   = [];
+    while (files.hasNext()) {
+      var f = files.next();
+      if (f.getName().match(/\.json$/)) {
+        try { list.push(JSON.parse(f.getBlob().getDataAsString())); } catch(e) {}
+      }
     }
+    return respond({ drafts: list });
+  } catch(e) {
+    Logger.log('handleListDrafts error: ' + e.message);
+    return respond({ error: e.message });
   }
-  return respond({ drafts: list });
 }
 
 function handleLoadDraft(issue) {
-  var folder = getDraftFolder();
-  var files  = folder.getFilesByName(issue + '.json');
-  if (!files.hasNext()) return respond({ error: 'not found' });
   try {
+    var folder = getDraftFolder();
+    var files  = folder.getFilesByName(issue + '.json');
+    if (!files.hasNext()) return respond({ error: 'not found' });
     return respond({ data: JSON.parse(files.next().getBlob().getDataAsString()) });
   } catch(e) {
-    return respond({ error: 'parse error' });
+    Logger.log('handleLoadDraft error: ' + e.message);
+    return respond({ error: e.message });
   }
 }
 
