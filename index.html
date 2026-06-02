@@ -1142,6 +1142,12 @@ syncIssue();
 const now = new Date();
 document.getElementById('date').value = `${now.getFullYear()}年${now.getMonth()+1}月`;
 loadScheduleStatus();
+gasPost({ action: 'getNextIssue' }).then(r => {
+  if (r.ok && r.next) {
+    document.getElementById('issue-num').value = r.next;
+    syncIssue();
+  }
+}).catch(() => {});
 </script>
 </body>
 </html>
