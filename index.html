@@ -333,11 +333,15 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
       <button class="toolbar-btn" onmousedown="event.preventDefault();applyStyle('h2')" title="見出し">H</button>
       <button class="toolbar-btn" onmousedown="event.preventDefault();applyStyle('hr')" title="区切り線">—</button>
       <div class="toolbar-sep"></div>
-      <label class="toolbar-btn" title="画像を挿入" style="cursor:pointer;">
+      <label class="toolbar-btn" title="画像をファイルから挿入（エディタのみ・メール非対応）" style="cursor:pointer;">
         🖼 <input type="file" accept="image/*" style="display:none;" onchange="insertImageFile(this)">
       </label>
+      <button class="toolbar-btn" onmousedown="event.preventDefault();insertImageByUrl()" title="URLで画像を挿入">🔗</button>
     </div>
     <div id="body-editor" contenteditable="true" spellcheck="false"></div>
+    <p id="img-warning" style="display:none;font-size:11px;color:#c8a87a;letter-spacing:0.05em;margin-top:6px;font-style:italic;">
+      ⚠ 貼り付け画像はエディタのみ表示されます。メールに含めるには 🔗 でURLを指定してください。
+    </p>
   </div>
 
   <div class="claude-panel" id="claude-panel-wrap" style="padding: 16px 28px 0;">
@@ -611,7 +615,11 @@ function serializeBodyForEmail() {
   const hrStyle = 'border:none;border-top:1px solid #c8b89a;margin:24px 0;';
   const imgStyle = 'max-width:100%;height:auto;display:block;margin:16px 0;';
 
-  clone.querySelectorAll('img').forEach(el => el.setAttribute('style', imgStyle));
+  // data URL 画像はメール送信時に除去（ペイロード過大のため）
+  clone.querySelectorAll('img').forEach(el => {
+    if (el.src.startsWith('data:')) { el.remove(); return; }
+    el.setAttribute('style', imgStyle);
+  });
   clone.querySelectorAll('h2').forEach(el => el.setAttribute('style', h2Style));
   clone.querySelectorAll('hr').forEach(el => el.setAttribute('style', hrStyle));
 
@@ -945,9 +953,19 @@ function insertImageFile(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => insertImageAtCursor(e.target.result);
+  reader.onload = e => { insertImageAtCursor(e.target.result); showImgWarning(); };
   reader.readAsDataURL(file);
   input.value = '';
+}
+
+function insertImageByUrl() {
+  const url = prompt('画像のURLを入力してください:');
+  if (!url || !url.trim()) return;
+  insertImageAtCursor(url.trim());
+}
+
+function showImgWarning() {
+  document.getElementById('img-warning').style.display = 'block';
 }
 
 // 画像ペースト処理
@@ -959,7 +977,7 @@ document.getElementById('body-editor').addEventListener('paste', e => {
       e.preventDefault();
       const file = item.getAsFile();
       const reader = new FileReader();
-      reader.onload = ev => insertImageAtCursor(ev.target.result);
+      reader.onload = ev => { insertImageAtCursor(ev.target.result); showImgWarning(); };
       reader.readAsDataURL(file);
       return;
     }
