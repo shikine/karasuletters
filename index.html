@@ -392,6 +392,7 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
 
 <!-- SEND BAR -->
 <div class="send-bar">
+  <button class="send-btn" id="test-btn" onclick="sendTestMail()" style="background:transparent;border:1px solid var(--mid);color:var(--mid);">テスト</button>
   <button class="send-btn" id="send-btn" onclick="sendMail()">今すぐ配信</button>
   <button class="send-btn" id="schedule-btn" onclick="scheduleMail()" style="background:transparent;border:1px solid var(--gold);color:var(--gold);">予約配信</button>
   <span class="send-status" id="send-status">配信日時を設定して予約するか、今すぐ配信できます</span>
@@ -649,6 +650,22 @@ async function generateWithClaude() {
     document.getElementById('body-editor').value = data.content?.[0]?.text || '';
     status.textContent = '✓ 生成しました。本文を確認・編集してください。';
   } catch(e) { status.textContent = 'エラーが発生しました。もう一度お試しください。'; }
+  btn.disabled = false;
+}
+
+// ===== TEST SEND =====
+async function sendTestMail() {
+  const subject = document.getElementById('subject').value.trim();
+  const body    = document.getElementById('body-editor').value.trim();
+  if (!subject) { setStatus('件名を入力してください', 'err'); return; }
+  if (!body)    { setStatus('本文を入力してください', 'err'); return; }
+  const btn = document.getElementById('test-btn');
+  btn.disabled = true; setStatus('テスト送信中...', '');
+  try {
+    const data = await gasPost({ action: 'sendTest', subject: '[TEST] ' + subject, html: buildHTML() });
+    if (data.ok) { setStatus('✓ テストメールを送信しました', 'ok'); }
+    else         { setStatus(`エラー: ${data.error || 'テスト送信に失敗しました'}`, 'err'); }
+  } catch(e) { setStatus('通信エラーが発生しました。', 'err'); }
   btn.disabled = false;
 }
 
