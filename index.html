@@ -981,8 +981,12 @@ function insertImageAtCursor(dataUrl) {
       const result = await gasPost({ action: 'uploadImage', imageData: compressed, mimeType });
       if (!result.ok) throw new Error(result.error || 'upload failed');
 
+      // Drive の uc?export=view URL を CDN 直リンクに変換（img タグで表示できるように）
+      const fileId = result.url.match(/[?&]id=([^&]+)/)?.[1];
+      const imgUrl = fileId ? `https://lh3.googleusercontent.com/d/${fileId}` : result.url;
+
       const img = document.createElement('img');
-      img.src = result.url;
+      img.src = imgUrl;
       placeholder.replaceWith(img);
     } catch(e) {
       placeholder.textContent = '⚠ 画像のアップロードに失敗しました';
