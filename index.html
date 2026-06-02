@@ -340,9 +340,6 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
       <button class="toolbar-btn" onmousedown="event.preventDefault();insertAudioBlock()" title="音源リンクを挿入">🎵</button>
     </div>
     <div id="body-editor" contenteditable="true" spellcheck="false"></div>
-    <p id="img-warning" style="display:none;font-size:11px;color:#c8a87a;letter-spacing:0.05em;margin-top:6px;font-style:italic;">
-      ⚠ 貼り付け画像はエディタのみ表示されます。メールに含めるには 🔗 でURLを指定してください。
-    </p>
   </div>
 
   <div class="claude-panel" id="claude-panel-wrap" style="padding: 16px 28px 0;">
@@ -961,22 +958,35 @@ function compressImage(dataUrl, callback) {
 }
 
 function insertImageAtCursor(dataUrl) {
-  compressImage(dataUrl, compressed => {
-    const editor = document.getElementById('body-editor');
-    editor.focus();
-    const img = document.createElement('img');
-    img.src = compressed;
-    const sel = window.getSelection();
-    if (sel && sel.rangeCount) {
-      const range = sel.getRangeAt(0);
-      range.deleteContents();
-      range.insertNode(img);
-      range.setStartAfter(img);
-      range.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(range);
-    } else {
-      editor.appendChild(img);
+  // まずプレースホルダーを挿入
+  const editor = document.getElementById('body-editor');
+  editor.focus();
+  const placeholder = document.createElement('span');
+  placeholder.textContent = '⏳ 画像をアップロード中...';
+  placeholder.style.cssText = 'color:#888;font-size:13px;font-style:italic;';
+  const sel = window.getSelection();
+  let range = null;
+  if (sel && sel.rangeCount) {
+    range = sel.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(placeholder);
+  } else {
+    editor.appendChild(placeholder);
+  }
+
+  compressImage(dataUrl, async compressed => {
+    try {
+      const mimeMatch = compressed.match(/^data:([^;]+);/);
+      const mimeType  = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const result = await gasPost({ action: 'uploadImage', imageData: compressed, mimeType });
+      if (!result.ok) throw new Error(result.error || 'upload failed');
+
+      const img = document.createElement('img');
+      img.src = result.url;
+      placeholder.replaceWith(img);
+    } catch(e) {
+      placeholder.textContent = '⚠ 画像のアップロードに失敗しました';
+      placeholder.style.color = '#c87a7a';
     }
   });
 }
@@ -985,7 +995,7 @@ function insertImageFile(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => { insertImageAtCursor(e.target.result); showImgWarning(); };
+  reader.onload = e => insertImageAtCursor(e.target.result);
   reader.readAsDataURL(file);
   input.value = '';
 }
@@ -1060,10 +1070,6 @@ function insertImageByUrl() {
   insertImageAtCursor(url.trim());
 }
 
-function showImgWarning() {
-  document.getElementById('img-warning').style.display = 'block';
-}
-
 // 画像ペースト処理
 document.getElementById('body-editor').addEventListener('paste', e => {
   const items = e.clipboardData?.items;
@@ -1073,7 +1079,7 @@ document.getElementById('body-editor').addEventListener('paste', e => {
       e.preventDefault();
       const file = item.getAsFile();
       const reader = new FileReader();
-      reader.onload = ev => { insertImageAtCursor(ev.target.result); showImgWarning(); };
+      reader.onload = ev => insertImageAtCursor(ev.target.result);
       reader.readAsDataURL(file);
       return;
     }
