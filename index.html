@@ -337,6 +337,7 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
         🖼 <input type="file" accept="image/*" style="display:none;" onchange="insertImageFile(this)">
       </label>
       <button class="toolbar-btn" onmousedown="event.preventDefault();insertImageByUrl()" title="URLで画像を挿入">🔗</button>
+      <button class="toolbar-btn" onmousedown="event.preventDefault();insertAudioBlock()" title="音源リンクを挿入">🎵</button>
     </div>
     <div id="body-editor" contenteditable="true" spellcheck="false"></div>
     <p id="img-warning" style="display:none;font-size:11px;color:#c8a87a;letter-spacing:0.05em;margin-top:6px;font-style:italic;">
@@ -356,6 +357,31 @@ input[type="text"]::placeholder, textarea::placeholder { color: #444440; }
   </div>
 
 
+</div>
+
+<!-- AUDIO MODAL -->
+<div class="modal-overlay" id="audio-modal">
+  <div class="modal" style="max-width:400px;">
+    <p class="modal-title">音源リンクを挿入</p>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label class="field-label">音源URL</label>
+        <input type="text" id="audio-url" placeholder="https://soundcloud.com/...">
+      </div>
+      <div>
+        <label class="field-label">曲名 / タイトル</label>
+        <input type="text" id="audio-title" placeholder="曲名">
+      </div>
+      <div>
+        <label class="field-label">サムネイル画像URL（任意）</label>
+        <input type="text" id="audio-thumb" placeholder="https://... （省略可）">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:20px;">
+      <button class="send-btn" style="flex:1;padding:10px;" onclick="confirmInsertAudio()">挿入</button>
+      <button class="modal-close" style="flex:1;margin:0;" onclick="closeAudioModal()">キャンセル</button>
+    </div>
+  </div>
 </div>
 
 <!-- PREVIEW MODAL -->
@@ -628,6 +654,12 @@ function serializeBodyForEmail() {
     if (node.nodeType === 3) {
       const t = node.textContent.trim();
       if (t) html += `<p style="${pStyle}">${t}</p>`;
+    } else if (node.dataset?.audioBlock) {
+      // 音源ブロック → メール用に再生成
+      const aUrl   = node.dataset.audioUrl   || '';
+      const aTitle = node.dataset.audioTitle || '音源を聴く';
+      const aThumb = node.dataset.audioThumb || '';
+      html += `<div style="margin:16px 0;">${buildAudioBlockInner(aUrl, aTitle, aThumb, false)}</div>`;
     } else if (node.nodeName === 'DIV' || node.nodeName === 'P') {
       const inner = node.innerHTML;
       if (!inner || inner === '<br>' || inner.trim() === '') continue;
@@ -956,6 +988,70 @@ function insertImageFile(input) {
   reader.onload = e => { insertImageAtCursor(e.target.result); showImgWarning(); };
   reader.readAsDataURL(file);
   input.value = '';
+}
+
+// ===== AUDIO BLOCK =====
+let _audioRange = null;
+
+function insertAudioBlock() {
+  // カーソル位置を保存
+  const sel = window.getSelection();
+  _audioRange = sel && sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+  document.getElementById('audio-url').value   = '';
+  document.getElementById('audio-title').value = '';
+  document.getElementById('audio-thumb').value = '';
+  document.getElementById('audio-modal').classList.add('open');
+  setTimeout(() => document.getElementById('audio-url').focus(), 50);
+}
+
+function closeAudioModal() {
+  document.getElementById('audio-modal').classList.remove('open');
+}
+
+function confirmInsertAudio() {
+  const url   = document.getElementById('audio-url').value.trim();
+  const title = document.getElementById('audio-title').value.trim() || '音源を聴く';
+  const thumb = document.getElementById('audio-thumb').value.trim();
+  if (!url) { document.getElementById('audio-url').focus(); return; }
+  closeAudioModal();
+
+  // エディタ内プレビュー用ブロック
+  const block = document.createElement('div');
+  block.setAttribute('data-audio-block', '1');
+  block.setAttribute('data-audio-url', url);
+  block.setAttribute('data-audio-title', title);
+  block.setAttribute('data-audio-thumb', thumb);
+  block.contentEditable = 'false';
+  block.style.cssText = 'display:block;margin:16px 0;cursor:default;';
+  block.innerHTML = buildAudioBlockInner(url, title, thumb, true);
+
+  const editor = document.getElementById('body-editor');
+  const p = document.createElement('p'); p.innerHTML = '<br>';
+  if (_audioRange) {
+    _audioRange.collapse(false);
+    _audioRange.insertNode(p);
+    _audioRange.insertNode(block);
+  } else {
+    editor.appendChild(block);
+    editor.appendChild(p);
+  }
+  _audioRange = null;
+}
+
+function buildAudioBlockInner(url, title, thumb, forEditor) {
+  const bg    = forEditor ? '#1e1e1c' : '#1a1a1a';
+  const border = forEditor ? '#2a2a28' : '#333';
+  const thumbHtml = thumb
+    ? `<img src="${thumb}" style="width:72px;height:72px;object-fit:cover;flex-shrink:0;" alt="">`
+    : `<div style="width:72px;height:72px;background:#2a2a28;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:28px;">🎵</div>`;
+  return `<a href="${url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:16px;padding:16px;background:${bg};border:1px solid ${border};text-decoration:none;color:inherit;">
+    ${thumbHtml}
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:11px;letter-spacing:0.2em;color:#c8b89a;text-transform:uppercase;margin-bottom:6px;font-family:Georgia,serif;">▶ 音源</div>
+      <div style="font-size:16px;color:#f0ede6;font-family:Georgia,serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</div>
+      <div style="font-size:11px;color:#888;margin-top:4px;font-family:Georgia,serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${url}</div>
+    </div>
+  </a>`;
 }
 
 function insertImageByUrl() {
