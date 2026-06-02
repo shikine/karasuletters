@@ -893,23 +893,52 @@ function toggleClaudePanel() {
 }
 
 // ===== IMAGE INSERT =====
-function insertImageAtCursor(dataUrl) {
-  const editor = document.getElementById('body-editor');
-  editor.focus();
-  const img = document.createElement('img');
+const IMG_MAX_WIDTH  = 800;  // px
+const IMG_MAX_BYTES  = 300 * 1024; // 300KB 上限
+const IMG_QUALITY    = 0.82;
+
+function compressImage(dataUrl, callback) {
+  const img = new Image();
+  img.onload = () => {
+    let { width, height } = img;
+    if (width > IMG_MAX_WIDTH) {
+      height = Math.round(height * IMG_MAX_WIDTH / width);
+      width  = IMG_MAX_WIDTH;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width  = width;
+    canvas.height = height;
+    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+    // まず JPEG で試す
+    let result = canvas.toDataURL('image/jpeg', IMG_QUALITY);
+    // それでも大きければ quality を下げる
+    if (result.length > IMG_MAX_BYTES * 1.37) { // base64 は約 1.37 倍
+      result = canvas.toDataURL('image/jpeg', 0.6);
+    }
+    callback(result);
+  };
   img.src = dataUrl;
-  const sel = window.getSelection();
-  if (sel && sel.rangeCount) {
-    const range = sel.getRangeAt(0);
-    range.deleteContents();
-    range.insertNode(img);
-    range.setStartAfter(img);
-    range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
-  } else {
-    editor.appendChild(img);
-  }
+}
+
+function insertImageAtCursor(dataUrl) {
+  compressImage(dataUrl, compressed => {
+    const editor = document.getElementById('body-editor');
+    editor.focus();
+    const img = document.createElement('img');
+    img.src = compressed;
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount) {
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(img);
+      range.setStartAfter(img);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } else {
+      editor.appendChild(img);
+    }
+  });
 }
 
 function insertImageFile(input) {
