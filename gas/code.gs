@@ -145,6 +145,9 @@ function handleUpdateSchedule(id, subject, scheduledAt) {
 }
 
 // ===== 時間トリガー: 予約時刻にメール送信 + カレンダー削除 =====
+// 旧トリガー名 sendScheduledNewsletter との互換エイリアス
+function sendScheduledNewsletter() { checkAndSendScheduled(); }
+
 function checkAndSendScheduled() {
   var now   = new Date().getTime();
   var props = PropertiesService.getScriptProperties();
@@ -241,7 +244,7 @@ function ensureScheduleTrigger() {
 function setupTrigger() {
   ScriptApp.getProjectTriggers().forEach(function(t) {
     var fn = t.getHandlerFunction();
-    if (fn === 'processUnsubscribeEmails' || fn === 'checkAndSendScheduled') {
+    if (fn === 'processUnsubscribeEmails' || fn === 'checkAndSendScheduled' || fn === 'sendScheduledNewsletter') {
       ScriptApp.deleteTrigger(t);
     }
   });
