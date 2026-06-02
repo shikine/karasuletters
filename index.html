@@ -934,7 +934,7 @@ const IMG_MAX_WIDTH  = 800;  // px
 const IMG_MAX_BYTES  = 300 * 1024; // 300KB 上限
 const IMG_QUALITY    = 0.82;
 
-function compressImage(dataUrl, callback) {
+function compressImage(dataUrl, callback, onError) {
   const img = new Image();
   img.onload = () => {
     let { width, height } = img;
@@ -954,6 +954,7 @@ function compressImage(dataUrl, callback) {
     }
     callback(result);
   };
+  img.onerror = () => onError && onError(new Error('image load failed'));
   img.src = dataUrl;
 }
 
@@ -981,17 +982,32 @@ function insertImageAtCursor(dataUrl) {
       const result = await gasPost({ action: 'uploadImage', imageData: compressed, mimeType });
       if (!result.ok) throw new Error(result.error || 'upload failed');
 
-      // Drive の uc?export=view URL を CDN 直リンクに変換（img タグで表示できるように）
-      const fileId = result.url.match(/[?&]id=([^&]+)/)?.[1];
-      const imgUrl = fileId ? `https://lh3.googleusercontent.com/d/${fileId}` : result.url;
+      // fileId を取得：GAS が fileId を直接返す場合・uc?id= 形式・/file/d/ 形式のいずれにも対応
+      const fileId = result.fileId
+        || result.url?.match(/[?&]id=([^&]+)/)?.[1]
+        || result.url?.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+      const imgUrl = fileId
+        ? `https://lh3.googleusercontent.com/d/${fileId}`
+        : result.url;
+      if (!imgUrl) throw new Error('no image URL in response');
 
       const img = document.createElement('img');
       img.src = imgUrl;
+      img.onerror = () => {
+        placeholder.textContent = '⚠ 画像の表示に失敗しました';
+        placeholder.style.color = '#c87a7a';
+        img.replaceWith(placeholder);
+      };
       placeholder.replaceWith(img);
     } catch(e) {
+      console.error('Image upload error:', e);
       placeholder.textContent = '⚠ 画像のアップロードに失敗しました';
       placeholder.style.color = '#c87a7a';
     }
+  }, e => {
+    console.error('Image compress error:', e);
+    placeholder.textContent = '⚠ 画像の読み込みに失敗しました';
+    placeholder.style.color = '#c87a7a';
   });
 }
 
