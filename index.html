@@ -979,8 +979,12 @@ function insertImageAtCursor(dataUrl) {
     try {
       const mimeMatch = compressed.match(/^data:([^;]+);/);
       const mimeType  = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-      const result = await gasPost({ action: 'uploadImage', imageData: compressed, mimeType });
-      if (!result.ok) throw new Error(result.error || 'upload failed');
+      const rawRes = await fetch(GAS_URL, { method: 'POST', headers: GAS_HEADERS, body: JSON.stringify({ action: 'uploadImage', imageData: compressed, mimeType }) });
+      const rawText = await rawRes.text();
+      console.log('uploadImage raw response:', rawText);
+      let result;
+      try { result = JSON.parse(rawText); } catch(pe) { throw new Error('JSON解析失敗: ' + rawText.slice(0, 120)); }
+      if (!result.ok) throw new Error(result.error || ('ok=false, keys=' + Object.keys(result).join(',')));
 
       // fileId を取得：GAS が fileId を直接返す場合・uc?id= 形式・/file/d/ 形式のいずれにも対応
       const fileId = result.fileId
