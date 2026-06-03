@@ -1001,7 +1001,7 @@ function insertImageAtCursor(dataUrl) {
       placeholder.replaceWith(img);
     } catch(e) {
       console.error('Image upload error:', e);
-      placeholder.textContent = '⚠ 画像のアップロードに失敗しました';
+      placeholder.textContent = '⚠ ' + (e.message || '画像のアップロードに失敗しました');
       placeholder.style.color = '#c87a7a';
     }
   }, e => {
